@@ -6,6 +6,8 @@ import numpy as np
 from datetime import datetime
 import wandb
 
+from lightning.pytorch.loggers import WandbLogger
+
 from utils.constants_handler import ConstantsObject
 
 ## WAND CONSTANTS
