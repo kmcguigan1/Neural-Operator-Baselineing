@@ -1,13 +1,13 @@
 # run information
 METHODOLOGY: latent-fno
 SEED: 1999
-DATA_FILE: basic_heat_dataset.npy
+DATA_FILE: basic_heat_dataset_old.npy
 
 # dataloader info
 TIME_STEPS_IN: 7
 TIME_STEPS_OUT: 28
 BATCH_SIZE: 16
-TIME_INT: 4
+TIME_INT: 1
 USE_GRID: True
 
 # model information
@@ -19,7 +19,7 @@ MLP_RATIO: 1
 DEPTH: 3
 
 # train information
-EPOCHS: 1
+EPOCHS: 50
 
 OPTIMIZER: 
   KIND: adam
