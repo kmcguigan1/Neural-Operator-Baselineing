@@ -101,7 +101,7 @@ class FNO2d(nn.Module):
         self.latent_dims = config["LATENT_DIMS"]
         self.steps_in = config["TIME_STEPS_IN"]
         self.steps_out = config["TIME_STEPS_OUT"]
-        self.in_dims = self.steps_in
+        self.in_dims = self.steps_in + 2
         self.mlp_ratio = config['MLP_RATIO']
         self.depth = config['DEPTH']
         self.modes = (config['MODES1'], config['MODES2'])
@@ -116,9 +116,12 @@ class FNO2d(nn.Module):
             NeuralOperator(self.modes[0], self.modes[1], self.latent_dims, idx+1, activation=activation) for idx, activation in enumerate(activations)
         ])
 
-    def forward(self, x, in_inference:bool=False):
+    def forward(self, x, grid):
         # we get x in the shape
         B, H, W, C = x.shape
+        # concat the grid onto the x
+        x = torch.concatenate((x, grid), dim=-1)
+        print(x.shape)
         # project to higher space
         x = self.project(x)
         # move the channels to the first dim so that we take fft on last 2 dims

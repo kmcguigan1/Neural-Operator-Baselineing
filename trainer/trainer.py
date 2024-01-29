@@ -55,7 +55,8 @@ class LightningModel(pl.LightningModule):
 
     def _get_preds(self, batch):
         x = batch[0]
-        preds = self.model(x)
+        grid = batch[2]
+        preds = self.model(x, grid)
         return preds, x.shape[0]
 
     def training_step(self, batch, batch_idx):
@@ -78,7 +79,7 @@ class LightningModel(pl.LightningModule):
     def predict_step(self, batch, batch_idx):
         preds, batch_size = self._get_preds(batch)
         plain_actuals = batch[1]
-        last_observation = plain_actuals[..., -1]
+        last_observation = batch[0][..., -1]
         return preds, plain_actuals, last_observation
 
     def configure_optimizers(self):

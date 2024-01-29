@@ -6,16 +6,19 @@ class PDEDataset(torch.utils.data.Dataset):
         super().__init__()
         # save the data that we need
         self.array = array.copy().astype(np.float32) # (example, time, x, y)
-        # grid_x, grid_y = np.meshgrid(
-        #     np.linspace(start=0, stop=1.0, num=array.shape[-2]),
-        #     np.linspace(start=0, stop=1.0, num=array.shape[-1])
-        # )
-        # self.grid = np.concatenate(
-        #     (
-        #         np.expand_dims(grid_x, axis=-1),
-        #         np.expand_dims(grid_y, axis=-1)
-        #     ), axis=-1
-        # )
+        self.return_grid = False
+        if("USE_GRID" in config.keys() and config["USE_GRID"] == True):
+            self.return_grid = True
+            grid_x, grid_y = np.meshgrid(
+                np.linspace(start=0, stop=1.0, num=array.shape[-2]),
+                np.linspace(start=0, stop=1.0, num=array.shape[-1])
+            )
+            self.grid = np.concatenate(
+                (
+                    np.expand_dims(grid_x, axis=-1),
+                    np.expand_dims(grid_y, axis=-1)
+                ), axis=-1
+            ).astype(np.float32)
         # save info from config
         self.time_steps_in = config["TIME_STEPS_IN"]
         self.time_steps_out = config["TIME_STEPS_OUT"]
@@ -30,28 +33,9 @@ class PDEDataset(torch.utils.data.Dataset):
         return len(self.indecies_map)
 
     def generate_example_shape(self):
-        X, _ = self.__getitem__(0)
-        return X.shape
+        X, y, grid = self.__getitem__(0)
+        return (X.shape, grid.shape)
 
-    # add the grid back in
-    # then make sure that we work
-    # this is a simpler way of doing the last code base so we can keep it but start thinking better practices
-    # everything should be modular and selectable
-    # the data reader reads a data object thing for each dataset and returns the information needed for a training
-    # and other splits loader
-    # then we have a module that takes all this in and creates the datasets
-    # there should be a global handler that uses sub handlers for the specific datasets
-    # we can then pass
-
-    # actually these are different enough diff code bases is good, these have less complex covariates or weird things 
-    # we want to do anyways
-    # this is cleaner
-
-    # we could have covariate or head or things that like all models pull from
-    # for now this simple rebuild was fine, it was fast to do and good code is slow to design
-
-    # the grid is a must for all examples, don't add timesteps, but 
-    # no covariates for now
     def __getitem__(self, idx):
         (exmaple_idx, time_idx) = self.indecies_map[idx]
         # get the observations
@@ -60,6 +44,8 @@ class PDEDataset(torch.utils.data.Dataset):
         # reshape the array so that time is last
         X = X.transpose([1, 2, 0])
         y = y.transpose([1, 2, 0])
+        if(self.return_grid):
+            return X, y, self.grid
         return X, y
 
 def create_data_loader(array: np.ndarray, config: dict, shuffle: bool = True):

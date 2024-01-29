@@ -7,9 +7,9 @@ from utils.constants_handler import ConstantsObject
 def load_dataset(config: dict, constants_object: ConstantsObject):
     data_path = os.path.join(constants_object.DATA_PATH, config['DATA_FILE'])
     with open(data_path, mode='rb') as f:
-        train_data = np.load(f)[:4, ...]
-        val_data = np.load(f)[:2, ...]
-        test_data = np.load(f)[:2, ...]
+        train_data = np.load(f)
+        val_data = np.load(f)
+        test_data = np.load(f)
     return train_data, val_data, test_data
 
 def get_data_loaders(config: dict, constants_object: ConstantsObject):

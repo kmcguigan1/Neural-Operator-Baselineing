@@ -95,11 +95,11 @@ def log_single_metric(split_name, metric_name, metric_value, use_wandb):
     return
 
 def log_step_metric(split_name, metric_name, metric_values, use_wandb):
-    for step in range(len(metric_values)):
-        if(use_wandb):
+    if(use_wandb):
+        for step in range(len(metric_values)):
             wandb.log({f'{split_name}/final/{metric_name}': metric_values[step], 'index': step})
-        else:
-            print(f"{split_name} {metric_name}: {metric_values[step]}")
+    else:
+        print(f"{split_name} {metric_name}: {metric_values}")
     return
 
 def evaluate_model(trainer, model, data_loader, split_name, use_wandb=False):
