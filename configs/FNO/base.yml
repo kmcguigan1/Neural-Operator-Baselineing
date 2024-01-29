@@ -1,0 +1,31 @@
+# run information
+METHODOLOGY: fno
+SEED: 1999
+DATA_FILE: basic_heat_dataset.npy
+
+# dataloader info
+TIME_STEPS_IN: 7
+TIME_STEPS_OUT: 7
+BATCH_SIZE: 16
+TIME_INT: 10
+USE_GRID: True
+
+# model information
+LATENT_DIMS: 16
+MODES1: 8
+MODES2: 8
+DROP_RATE: 0.2
+MLP_RATIO: 1
+DEPTH: 1
+
+# train information
+EPOCHS: 1
+
+OPTIMIZER: 
+  KIND: adam
+  LEARNING_RATE: 0.001
+
+SCHEDULER:
+  KIND: reducer
+  FACTOR: 0.1
+  PATIENCE: 1

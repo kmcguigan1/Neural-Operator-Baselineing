@@ -37,13 +37,17 @@ def main():
         train_example_shape
     ) = get_data_loaders(config, constants_object)
     # get the model
-    img_size = (train_example_shape[-2],train_example_shape[-1])
+    img_size = (train_example_shape[0][-3],train_example_shape[0][-2])
     model = LightningModel(config, constants_object, train_example_count, img_size)
     model._print_summary(train_example_shape)
     # get and fit the trainer
-    trainer = get_lightning_trainer(config, lightning_logger=lightning_logger, accelerator=constants_object.ACCELERATOR)
+    trainer, timer_callback = get_lightning_trainer(config, lightning_logger=lightning_logger, accelerator=constants_object.ACCELERATOR)
     trainer.fit(model=model, train_dataloaders=train_data_loader, val_dataloaders=val_data_loader)
+    average_time_per_epoch = timer_callback._get_average_time_per_epoch()
+    total_epochs = timer_callback.epoch_count
     # evaluate the model on all datasets
+    if(args.run_wandb):
+        wandb.log({'average_time_per_epoch':average_time_per_epoch, 'total_epochs':total_epochs})
     evaluate_model(trainer, model, train_data_loader, 'train', use_wandb=args.run_wandb)
     evaluate_model(trainer, model, val_data_loader, 'val', use_wandb=args.run_wandb)
     evaluate_model(trainer, model, test_data_loader, 'test', use_wandb=args.run_wandb)

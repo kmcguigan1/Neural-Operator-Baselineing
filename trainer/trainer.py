@@ -3,6 +3,8 @@ import torch
 # torch.autograd.set_detect_anomaly(True)
 from torch.nn import MSELoss
 
+import time
+
 from torchsummary import summary
 import lightning.pytorch as pl
 from lightning.pytorch.loggers import WandbLogger
@@ -13,6 +15,8 @@ from utils.constants_handler import ConstantsObject
 
 # from models.afno_boundary_conditions import AFNO
 from models.fno import FNO2d
+from models.basic_fno import FNO2d as BasicFNO2d
+from models.conv_lstm import ConvLSTMModel
 # from models.afno_simple import SimpleAFNO
 # from models.vit import VIT
 # from models.custom_afno import CustomAFNO
@@ -47,6 +51,10 @@ class LightningModel(pl.LightningModule):
         # define the model
         if(constants_object.EXP_KIND == 'LATENT_FNO'):
             self.model = FNO2d(config, self._image_shape)
+        elif(constants_object.EXP_KIND == 'FNO'):
+            self.model = BasicFNO2d(config, self._image_shape)
+        elif(constants_object.EXP_KIND == 'CONV_LSTM'):
+            self.model = ConvLSTMModel(config, self._image_shape)
         else:
             raise Exception(f"{constants_object.EXP_KIND} is not implemented please implement this.")
 
@@ -98,19 +106,38 @@ class LightningModel(pl.LightningModule):
         else:
             raise Exception(f"Invalid scheduler specified of {self._config['SCHEDULER']['KIND']}")
 
+class TimingCallback(pl.Callback):
+    def __init__(self):
+        super().__init__()
+        self.epoch_start_time = 0
+        self.epoch_total = 0
+        self.epoch_count = 0
+
+    def on_epoch_start(self, trainer, pl_module):
+        self.epoch_start_time = time.time()
+
+    def on_epoch_end(self, trainer, pl_module):
+        epoch_end_time = time.time()
+        epoch_duration = epoch_end_time - self.epoch_start_time
+        self.epoch_total += epoch_duration
+        self.epoch_count += 1
+
+    def _get_average_time_per_epoch(self):
+        return self.epoch_total / self.epoch_count
 
 def get_lightning_trainer(config: dict, lightning_logger: WandbLogger = None, accelerator: str = 'auto'):
     # define the callbacks we want to use
     lr_monitor = LearningRateMonitor(logging_interval='step')
     early_stopping = EarlyStopping('val/loss', patience=4)
     model_checkpoint_val_loss = ModelCheckpoint(monitor="val/loss", mode="min", filename="Ep{epoch:02d}-val{val/loss:.2f}-best", auto_insert_metric_name=False, verbose=True)
+    timer_callback = TimingCallback()
     trainer = pl.Trainer(
         accelerator=accelerator,
         logger=lightning_logger,
         max_epochs=config['EPOCHS'],
         deterministic=False,
-        callbacks=[early_stopping, model_checkpoint_val_loss, lr_monitor],#, RichProgressBar(leave=True)],
+        callbacks=[early_stopping, model_checkpoint_val_loss, lr_monitor, timer_callback],#, RichProgressBar(leave=True)],
         log_every_n_steps=10
     )
-    return trainer
+    return trainer, timer_callback
 
