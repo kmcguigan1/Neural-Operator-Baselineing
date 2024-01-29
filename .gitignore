@@ -1,7 +1,15 @@
+constants_handler.py
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+**/**.csv
+**/**.npy
+**/**.ckpt
+lightning_logs/**
+
+
 
 # C extensions
 *.so
