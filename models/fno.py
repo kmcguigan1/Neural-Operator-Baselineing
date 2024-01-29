@@ -121,7 +121,6 @@ class FNO2d(nn.Module):
         B, H, W, C = x.shape
         # concat the grid onto the x
         x = torch.concatenate((x, grid), dim=-1)
-        print(x.shape)
         # project to higher space
         x = self.project(x)
         # move the channels to the first dim so that we take fft on last 2 dims
