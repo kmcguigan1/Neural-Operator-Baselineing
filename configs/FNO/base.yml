@@ -5,9 +5,9 @@ DATA_FILE: basic_heat_dataset.npy
 
 # dataloader info
 TIME_STEPS_IN: 7
-TIME_STEPS_OUT: 7
+TIME_STEPS_OUT: 28
 BATCH_SIZE: 16
-TIME_INT: 10
+TIME_INT: 1
 USE_GRID: True
 
 # model information
@@ -16,10 +16,10 @@ MODES1: 8
 MODES2: 8
 DROP_RATE: 0.2
 MLP_RATIO: 1
-DEPTH: 1
+DEPTH: 4
 
 # train information
-EPOCHS: 1
+EPOCHS: 100
 
 OPTIMIZER: 
   KIND: adam
