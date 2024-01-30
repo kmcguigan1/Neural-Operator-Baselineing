@@ -4,12 +4,26 @@ import numpy as np
 from data_handling.data_loader import create_data_loader
 from utils.constants_handler import ConstantsObject
 
+def cut_data(config: dict, array: np.array):
+    if(config['METHODOLOGY'] == 'afno'):
+        x_cut = array.shape[-2] % config['PATCH_SIZE'][0]
+        y_cut = array.shape[-1] % config['PATCH_SIZE'][1]
+        if(x_cut > 0):
+            array = array[..., :-x_cut, :]
+        if(y_cut > 0):
+            array = array[..., :-y_cut]
+    return array
+
+
 def load_dataset(config: dict, constants_object: ConstantsObject):
     data_path = os.path.join(constants_object.DATA_PATH, config['DATA_FILE'])
     with open(data_path, mode='rb') as f:
         train_data = np.load(f)
         val_data = np.load(f)
         test_data = np.load(f)
+    train_data = cut_data(config, train_data)
+    val_data = cut_data(config, val_data)
+    test_data = cut_data(config, test_data)
     return train_data, val_data, test_data
 
 def get_data_loaders(config: dict, constants_object: ConstantsObject):
