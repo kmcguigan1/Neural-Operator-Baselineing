@@ -8,7 +8,7 @@ import time
 from torchsummary import summary
 import lightning.pytorch as pl
 from lightning.pytorch.loggers import WandbLogger
-from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint, LearningRateMonitor, RichProgressBar, TQDMProgressBar, ProgressBar
+from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint, LearningRateMonitor, RichProgressBar, TQDMProgressBar, ProgressBar, Callback
 
 # import the models that we have
 from utils.constants_handler import ConstantsObject
@@ -106,17 +106,22 @@ class LightningModel(pl.LightningModule):
         else:
             raise Exception(f"Invalid scheduler specified of {self._config['SCHEDULER']['KIND']}")
 
-class TimingCallback(pl.Callback):
+class TimingCallback(Callback):
     def __init__(self):
         super().__init__()
         self.epoch_start_time = 0
         self.epoch_total = 0
         self.epoch_count = 0
 
-    def on_epoch_start(self, trainer, pl_module):
+    def on_train_epoch_start(self, trainer, pl_module):
+        print("in start")
         self.epoch_start_time = time.time()
 
-    def on_epoch_end(self, trainer, pl_module):
+    def on_train_start(self):
+        print('starting')
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        print("In on epoch end")
         epoch_end_time = time.time()
         epoch_duration = epoch_end_time - self.epoch_start_time
         self.epoch_total += epoch_duration

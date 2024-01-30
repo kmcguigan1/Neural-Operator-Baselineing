@@ -17,7 +17,7 @@ KERNEL_SIZE: 3
 DEPTH: 1
 
 # train information
-EPOCHS: 1
+EPOCHS: 50
 
 OPTIMIZER: 
   KIND: adam
