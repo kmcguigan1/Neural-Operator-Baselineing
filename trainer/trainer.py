@@ -126,7 +126,7 @@ class TimingCallback(Callback):
         self.epoch_count += 1
 
     def _get_average_time_per_epoch(self):
-        return self.epoch_total / self.epoch_couount
+        return self.epoch_total / self.epoch_count
 
 def get_lightning_trainer(config: dict, lightning_logger: WandbLogger = None, accelerator: str = 'auto'):
     # define the callbacks we want to use
