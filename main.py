@@ -38,6 +38,7 @@ def main():
     ) = get_data_loaders(config, constants_object)
     # get the model
     img_size = (train_example_shape[0][-3],train_example_shape[0][-2])
+    print(img_size)
     model = LightningModel(config, constants_object, train_example_count, img_size)
     model._print_summary(train_example_shape)
     # get and fit the trainer
