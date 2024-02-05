@@ -14,7 +14,6 @@ def cut_data(config: dict, array: np.array):
             array = array[..., :-y_cut]
     return array
 
-
 def load_dataset(config: dict, constants_object: ConstantsObject):
     data_path = os.path.join(constants_object.DATA_PATH, config['DATA_FILE'])
     with open(data_path, mode='rb') as f:

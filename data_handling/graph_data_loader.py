@@ -17,15 +17,17 @@ class GraphPDEDataset(torch.utils.data.Dataset):
             np.linspace(start=0, stop=1.0, num=self.nx),
             np.linspace(start=0, stop=1.0, num=self.ny)
         )
-        self.grid = np.concatenate((
+        grid = np.concatenate((
             np.expand_dims(grid_x, axis=-1),
             np.expand_dims(grid_y, axis=-1)
         ), axis=-1).astype(np.float32).reshape(-1, 2)
         # get the distances between nodes and use that to get the node connections
-        self.distances = cdist(self.grid)
-        distance_cuttoff = 1.0 / (self.nx - 1)
-        connections = np.where(np.logical_and(self.distances <= distance_cuttoff, self.distances > 0))
+        distances = cdist(grid, grid)
+        distance_cuttoff = 2.0 / (self.nx - 1)
+        connections = np.where(np.logical_and(distances < distance_cuttoff, distances > 0))
         self.edges = np.vstack(connections)
+        # get the features of each edge such as the distance and the cos and sin of the angle
+        self.edge_features = distances[connections[0], connections[1]]
         # save info from config
         self.time_steps_in = config["TIME_STEPS_IN"]
         self.time_steps_out = config["TIME_STEPS_OUT"]
@@ -52,9 +54,30 @@ class GraphPDEDataset(torch.utils.data.Dataset):
         X = X.transpose([1, 2, 0])
         y = y.transpose([1, 2, 0])
         # return the data
-        return X, y, self.grid, self.edges
+        return X, y, self.edges, self.edge_features
 
 def create_data_loader(array: np.ndarray, config: dict, shuffle: bool = True):
     dataset = PDEDataset(array, config)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=config['BATCH_SIZE'], shuffle=shuffle, num_workers=3, persistent_workers=True, pin_memory=False)
     return data_loader, len(dataset), dataset.generate_example_shape()
+
+def test():
+    # Ex, Time, X, Y
+    example_data = np.random.normal(loc=0, scale=1, size=(4, 10, 4, 4))
+    config = {"TIME_STEPS_IN":2, "TIME_STEPS_OUT":3, "TIME_INT":1}
+    dataset = GraphPDEDataset(example_data, config)
+
+
+
+if __name__ == '__main__':
+    test()
+
+
+# print("Edge Features")
+#         print(self.edge_features.shape)
+#         print(self.edge_features)
+#         dx = grid[connections[1], 0] - grid[connections[0], 0]
+#         dy = grid[connections[1], 1] - grid[connections[0], 1]
+#         tan_theta = dy / dx
+#         theta = np.arctan(tan_theta)
+#         print(theta)

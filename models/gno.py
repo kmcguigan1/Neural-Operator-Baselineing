@@ -31,11 +31,16 @@ class CustomMessagePassing(MessagePassing):
         self.W = MLP(node_features, node_features)
         self.K = MLP(node_features * 2 + grid_dims * 2 + 1, node_features)
 
-    def forward(self, x, edge_index, grid):
-        x = self.propagate(edge_index, x=x, grid=grid)
+    def forward(self, x, edge_index, edge_features):
+        x = self.propagate(edge_index, x=x, edge_features=edge_features)
         return x
 
-    def message(self, x_j, x_i, grid_i, grid_j):
+    def message(self, x_i, x_j, edge_index, index):
+        print(x_i)
+        print(x_j)
+        print(edge_index)
+        print(index)
+        return x_j
         distances = torch.sqrt(torch.sum(torch.square(grid_i - grid_j), dim=-1, keepdims=True))
         edge_features = torch.cat((distances, grid_i, grid_j, x_i, x_j), dim=-1)
         return self.K(edge_features)
@@ -62,12 +67,12 @@ class GNO(nn.Module):
             CustomMessagePassing(self.latent_dims, 2, self.mlp_ratio)
         ])
 
-    def forward(self, x, grid, edge_index):
+    def forward(self, x, edge_index, edge_features):
         x = torch.cat((x, grid), dim=-1)
         x = self.project(x)
 
         for block in self.blocks:
-            x = block(x, edge_index, grid)
+            x = block(x, edge_index, edge_features)
 
         x = self.decode(x)
         return x
@@ -78,17 +83,15 @@ class GNO(nn.Module):
 def test():
     layer = CustomMessagePassing(1, 2)
     # features
-    x = torch.Tensor([[1],[2],[3],[4]])
+    x = torch.Tensor([[0],[1],[2],[3]])
     # edges
     edges = torch.tensor([
         [0, 1, 0, 2, 2, 3, 0],
         [1, 0, 2, 0, 3, 2, 3]
     ])
-    grid = torch.tensor([
-        [0,0],[0,1],[1,0],[1,1]
-    ])
+    edge_features = torch.rand((edges.shape[1], 4))
 
-    layer.forward(x, edges, grid)
+    layer.forward(x, edges, edge_features)
 
 if __name__ == '__main__':
     test()
