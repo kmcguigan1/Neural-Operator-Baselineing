@@ -44,9 +44,9 @@ def calculate_total_mean_absolute_error(forecasts:np.array, actuals:np.array, me
     log_step_metric(split_name, f'{metric_name}_by_step', mean_abs_step_error, use_wandb)
 
 def get_weighted_step_changes(delta_forecasts:np.array, delta_actuals:np.array):
-    delta_forecasts_total = np.sum(delta_forecasts, axis=1, keepdims=True) + 1e-8
-    delta_actuals_total = np.sum(delta_forecasts, axis=1, keepdims=True) + 1e-8
-    return delta_forecasts / delta_forecasts_total, delta_actuals / delta_actuals_total
+    delta_forecasts_weights = np.abs(delta_forecasts) / np.sum(np.abs(delta_forecasts), axis=1, keepdims=True)
+    delta_actuals_weights = np.abs(delta_actuals) / np.sum(np.abs(delta_actuals), axis=1, keepdims=True)
+    return delta_forecasts_weights, delta_actuals_weights
 
 def get_step_changes(forecasts:np.array, actuals:np.array, last_input:np.array):
     print(forecasts.shape, np.concatenate((np.expand_dims(last_input, axis=-1), forecasts[..., :-1]), axis=-1).shape)
