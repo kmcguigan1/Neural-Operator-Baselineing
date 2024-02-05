@@ -1,10 +1,11 @@
+import gc
 from datetime import datetime
 
 import wandb
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch import seed_everything
 
-from data_handling.data_reader import get_data_loaders
+from data_handling.data_reader import get_train_data_loaders, get_test_data_loader
 from trainer.trainer import LightningModel, get_lightning_trainer
 from trainer.evaluator import evaluate_model
 from utils.constants_handler import ConstantsObject
@@ -32,10 +33,9 @@ def main():
     (
         train_data_loader,
         val_data_loader, 
-        test_data_loader, 
         train_example_count, 
         train_example_shape
-    ) = get_data_loaders(config, constants_object)
+    ) = get_train_data_loaders(config, constants_object)
     # get the model
     img_size = (train_example_shape[0][-3],train_example_shape[0][-2])
     print(img_size)
@@ -50,7 +50,12 @@ def main():
     if(args.run_wandb):
         wandb.log({'average_time_per_epoch':average_time_per_epoch, 'total_epochs':total_epochs})
     evaluate_model(trainer, model, train_data_loader, 'train', use_wandb=args.run_wandb)
+    del train_data_loader
+    gc.collect()
     evaluate_model(trainer, model, val_data_loader, 'val', use_wandb=args.run_wandb)
+    del val_data_loader
+    gc.collect()
+    test_data_loader = get_test_data_loader(config, constants_object)
     evaluate_model(trainer, model, test_data_loader, 'test', use_wandb=args.run_wandb)
 
 if __name__ == '__main__':

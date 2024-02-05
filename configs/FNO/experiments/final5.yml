@@ -7,3 +7,5 @@ DEPTH: 4
 
 ABLATION: True
 SEED: 2582
+
+DATA_FILE: basic_heat_dataset.npy

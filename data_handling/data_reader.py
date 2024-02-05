@@ -25,9 +25,13 @@ def load_dataset(config: dict, constants_object: ConstantsObject):
     test_data = cut_data(config, test_data)
     return train_data, val_data, test_data
 
-def get_data_loaders(config: dict, constants_object: ConstantsObject):
-    train_data, val_data, test_data = load_dataset(config, constants_object)
+def get_train_data_loaders(config: dict, constants_object: ConstantsObject):
+    train_data, val_data, _ = load_dataset(config, constants_object)
     train_data_loader, train_example_count, train_example_shape = create_data_loader(train_data, config, shuffle=True)
     val_data_loader, val_example_count, val_example_shape = create_data_loader(val_data, config, shuffle=False)
+    return train_data_loader, val_data_loader, train_example_count, train_example_shape
+
+def get_test_data_loader(config: dict, constants_object: ConstantsObject):
+    _, _, test_data = load_dataset(config, constants_object)
     test_data_loader, test_example_count, test_example_shape = create_data_loader(test_data, config, shuffle=False)
-    return train_data_loader, val_data_loader, test_data_loader, train_example_count, train_example_shape
+    return test_data_loader
