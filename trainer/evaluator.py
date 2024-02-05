@@ -26,8 +26,8 @@ def calculate_mean_squared_error(forecasts:np.array, actuals:np.array, metric_na
     log_step_metric(split_name, f'{metric_name}_by_step', mean_abs_step_error, use_wandb)
 
 def calculate_relative_loss(forecasts:np.array, actuals:np.array, metric_name:str, split_name:str, order=1, use_wandb:bool=False) -> None:
-    relative_forecasts = forecasts / np.linalg.norm(forecasts, ord=order, axis=1, keepdims=True)
-    relative_actuals = actuals / np.linalg.norm(actuals, ord=order, axis=1, keepdims=True)
+    relative_forecasts = forecasts / (np.linalg.norm(forecasts, ord=order, axis=1, keepdims=True) + 1e-8)
+    relative_actuals = actuals / (np.linalg.norm(actuals, ord=order, axis=1, keepdims=True) + 1e-8)
     abs_error = np.abs(np.subtract(relative_forecasts, relative_actuals))
     mean_abs_error = np.mean(abs_error)
     mean_abs_step_error = np.array([np.mean(abs_error[...,idx]) for idx in range(abs_error.shape[-1])])
@@ -44,8 +44,8 @@ def calculate_total_mean_absolute_error(forecasts:np.array, actuals:np.array, me
     log_step_metric(split_name, f'{metric_name}_by_step', mean_abs_step_error, use_wandb)
 
 def get_weighted_step_changes(delta_forecasts:np.array, delta_actuals:np.array):
-    delta_forecasts_total = np.sum(delta_forecasts, axis=1, keepdims=True)
-    delta_actuals_total = np.sum(delta_forecasts, axis=1, keepdims=True)
+    delta_forecasts_total = np.sum(delta_forecasts, axis=1, keepdims=True) + 1e-8
+    delta_actuals_total = np.sum(delta_forecasts, axis=1, keepdims=True) + 1e-8
     return delta_forecasts / delta_forecasts_total, delta_actuals / delta_actuals_total
 
 def get_step_changes(forecasts:np.array, actuals:np.array, last_input:np.array):

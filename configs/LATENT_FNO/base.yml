@@ -19,7 +19,7 @@ MLP_RATIO: 1
 DEPTH: 3
 
 # train information
-EPOCHS: 1
+EPOCHS: 100
 
 OPTIMIZER: 
   KIND: adam
