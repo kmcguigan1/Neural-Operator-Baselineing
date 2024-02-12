@@ -18,15 +18,15 @@ def cut_data(config: dict, array: np.array):
 
 def apply_transforms(train_data:np.array, val_data:np.array, test_data:np.array, config:dict) -> tuple:
     transform = None
-    if('NORMALIZER' is config.keys() and config['NORMALIZER'] == 'gaus'):
+    if('NORMALIZER' in config.keys() and config['NORMALIZER'] == 'gaus'):
         transform = GausNorm()
         train_data = transform.fit_transform(train_data)
-        val_data = transfrom.transform(val_data)
+        val_data = transform.transform(val_data)
         test_data = transform.transform(test_data)
-    elif('NORMALIZER' is config.keys() and config['NORMALIZER'] == 'range'):
+    elif('NORMALIZER' in config.keys() and config['NORMALIZER'] == 'range'):
         transform = RangeNorm()
         train_data = transform.fit_transform(train_data)
-        val_data = transfrom.transform(val_data)
+        val_data = transform.transform(val_data)
         test_data = transform.transform(test_data)
     return train_data, val_data, test_data, transform
 
@@ -45,14 +45,14 @@ def get_train_data_loaders(config: dict, constants_object: ConstantsObject):
     train_data, val_data, _ = load_dataset(config, constants_object)
     # get the transfromer that we are using on the object
     transform = None
-    if('NORMALIZER' is config.keys() and config['NORMALIZER'] == 'gaus'):
+    if('NORMALIZER' in config.keys() and config['NORMALIZER'] == 'gaus'):
         transform = GausNorm()
-    elif('NORMALIZER' is config.keys() and config['NORMALIZER'] == 'range'):
+    elif('NORMALIZER' in config.keys() and config['NORMALIZER'] == 'range'):
         transform = RangeNorm()
     # if the transfrom is not none then we fit it and stuff
     if(transform is not None and np.logical_or('PER_INSTANCE' not in config.keys(), config['PER_INSTANCE'] == False)):
         train_data = transform.fit_transform(train_data)
-        val_data = transfrom.transform(val_data)
+        val_data = transform.transform(val_data)
     # now build the dataloaders
     if(constants_object.EXP_KIND == 'GNO'):
         train_data_loader, train_example_count, train_example_shape = create_graph_data_loader(train_data, config, shuffle=True)
