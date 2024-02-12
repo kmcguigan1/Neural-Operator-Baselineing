@@ -66,7 +66,7 @@ def parse_args():
         prog='NeuralOperatorGeneralCode',
         description='This experiment runs different versions of the neural operator.'
     )
-    parser.add_argument('--exp-kind', default='LATENT_FNO', choices=['LATENT_FNO','FNO','CONV_LSTM','AFNO'], help='Kind of expierment to be run.')
+    parser.add_argument('--exp-kind', default='LATENT_FNO', choices=['LATENT_FNO','FNO','CONV_LSTM','AFNO','PERSISTANCE'], help='Kind of expierment to be run.')
     parser.add_argument('--exp-name', default=None, type=str, help='Name of the experiment config to use.')
     parser.add_argument('--run-wandb', action=argparse.BooleanOptionalAction, help='Should wandb be run.')
     args = parser.parse_args()

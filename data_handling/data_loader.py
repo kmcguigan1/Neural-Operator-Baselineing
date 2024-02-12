@@ -33,8 +33,11 @@ class PDEDataset(torch.utils.data.Dataset):
         return len(self.indecies_map)
 
     def generate_example_shape(self):
-        X, y, grid = self.__getitem__(0)
-        return (X.shape, grid.shape)
+        if(self.return_grid):
+            X, y, grid = self.__getitem__(0)
+            return (X.shape, grid.shape)
+        X, y = self.__getitem__(0)
+        return X.shape
 
     def __getitem__(self, idx):
         (exmaple_idx, time_idx) = self.indecies_map[idx]

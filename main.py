@@ -34,18 +34,27 @@ def main():
         train_data_loader,
         val_data_loader, 
         train_example_count, 
-        train_example_shape
+        train_example_shape, 
+        transform
     ) = get_train_data_loaders(config, constants_object)
     # get the model
-    img_size = (train_example_shape[0][-3],train_example_shape[0][-2])
+    if(len(train_example_shape) == 2):
+        img_size = (train_example_shape[0][-3],train_example_shape[0][-2])
+    else:
+        img_size = (train_example_shape[-3], train_example_shape[-2])
     print(img_size)
     model = LightningModel(config, constants_object, train_example_count, img_size)
-    model._print_summary(train_example_shape)
+    if(constants_object.EXP_KIND != 'PERSISTANCE'):
+        model._print_summary(train_example_shape)
     # get and fit the trainer
     trainer, timer_callback = get_lightning_trainer(config, lightning_logger=lightning_logger, accelerator=constants_object.ACCELERATOR)
-    trainer.fit(model=model, train_dataloaders=train_data_loader, val_dataloaders=val_data_loader)
-    average_time_per_epoch = timer_callback._get_average_time_per_epoch()
-    total_epochs = timer_callback.epoch_count
+    if(constants_object.EXP_KIND == 'PERSISTANCE'):
+        average_time_per_epoch = 0
+        total_epochs = 0
+    else:
+        trainer.fit(model=model, train_dataloaders=train_data_loader, val_dataloaders=val_data_loader)
+        average_time_per_epoch = timer_callback._get_average_time_per_epoch()
+        total_epochs = timer_callback.epoch_count
     # evaluate the model on all datasets
     if(args.run_wandb):
         wandb.log({'average_time_per_epoch':average_time_per_epoch, 'total_epochs':total_epochs})
@@ -55,7 +64,7 @@ def main():
     evaluate_model(trainer, model, val_data_loader, 'val', use_wandb=args.run_wandb)
     del val_data_loader
     gc.collect()
-    test_data_loader = get_test_data_loader(config, constants_object)
+    test_data_loader = get_test_data_loader(config, constants_object, transform)
     evaluate_model(trainer, model, test_data_loader, 'test', use_wandb=args.run_wandb)
 
 if __name__ == '__main__':

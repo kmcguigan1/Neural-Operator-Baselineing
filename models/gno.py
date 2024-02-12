@@ -26,7 +26,7 @@ class MLP(nn.Module):
         return x
 
 class CustomMessagePassing(MessagePassing):
-    def __init__(self, node_features:int, grid_dims:int, mlp_ratio:int=1):
+    def __init__(self, node_features:int, edge_features:int, mlp_ratio:int=1):
         super().__init__(aggr='add')
         self.W = MLP(node_features, node_features)
         self.K = MLP(node_features * 2 + grid_dims * 2 + 1, node_features)
@@ -36,10 +36,6 @@ class CustomMessagePassing(MessagePassing):
         return x
 
     def message(self, x_i, x_j, edge_index, index):
-        print(x_i)
-        print(x_j)
-        print(edge_index)
-        print(index)
         return x_j
         distances = torch.sqrt(torch.sum(torch.square(grid_i - grid_j), dim=-1, keepdims=True))
         edge_features = torch.cat((distances, grid_i, grid_j, x_i, x_j), dim=-1)
@@ -67,7 +63,7 @@ class GNO(nn.Module):
             CustomMessagePassing(self.latent_dims, 2, self.mlp_ratio)
         ])
 
-    def forward(self, x, edge_index, edge_features):
+    def forward(self, x, grid, edge_index, edge_features):
         x = torch.cat((x, grid), dim=-1)
         x = self.project(x)
 

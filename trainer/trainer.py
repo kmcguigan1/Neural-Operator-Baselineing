@@ -1,3 +1,5 @@
+import numpy as np
+
 from torchmetrics import Metric
 import torch
 # torch.autograd.set_detect_anomaly(True)
@@ -12,12 +14,15 @@ from lightning.pytorch.callbacks import Callback, EarlyStopping, ModelCheckpoint
 
 # import the models that we have
 from utils.constants_handler import ConstantsObject
+from data_handling.transforms import DataTransform
 
 # from models.afno_boundary_conditions import AFNO
 from models.fno import FNO2d
 from models.basic_fno import FNO2d as BasicFNO2d
 from models.conv_lstm import ConvLSTMModel
 from models.afno import AFNO
+from models.gno import GNO
+from models.persistance import PersistanceModel
 # from models.afno_simple import SimpleAFNO
 # from models.vit import VIT
 # from models.custom_afno import CustomAFNO
@@ -37,7 +42,7 @@ class CustomMAE(Metric):
         return self.error.float() / self.total
 
 class LightningModel(pl.LightningModule):
-    def __init__(self, config:dict, constants_object:ConstantsObject, train_example_count:int, image_shape:tuple) -> None:
+    def __init__(self, config:dict, constants_object:ConstantsObject, train_example_count:int, image_shape:tuple, transform:DataTransform = None) -> None:
         # lightning information
         super().__init__()
         self.automatic_optimization = True
@@ -45,6 +50,11 @@ class LightningModel(pl.LightningModule):
         self._config = config
         self._train_example_count = train_example_count
         self._image_shape = image_shape
+        # determine things about our loader
+        self.transform = transform
+        self.graph_style_loader = False
+        if("GRAPH_DATA_LOADER" in config.keys() and config["GRAPH_DATA_LOADER"] == True):
+            self.graph_style_loader = True
         # define loss and metrics
         self._loss_fn = MSELoss()
         self._train_acc = CustomMAE()
@@ -58,6 +68,10 @@ class LightningModel(pl.LightningModule):
             self.model = ConvLSTMModel(config, self._image_shape)
         elif(constants_object.EXP_KIND == 'AFNO'):
             self.model = AFNO(config, self._image_shape)
+        elif(constants_object.EXP_KIND == 'GNO'):
+            self.model = GNO(config, self._image_shape)
+        elif(constants_object.EXP_KIND == 'PERSISTANCE'):
+            self.model = PersistanceModel(config, self._image_shape)
         else:
             raise Exception(f"{constants_object.EXP_KIND} is not implemented please implement this.")
 
@@ -65,14 +79,17 @@ class LightningModel(pl.LightningModule):
         summary(self.model, sample_shapes)
 
     def _get_preds(self, batch):
-        x = batch[0]
-        grid = batch[2]
-        preds = self.model(x, grid)
-        return preds, x.shape[0]
+        if(self.graph_style_loader):
+            x, y, grid, edge_index, edge_features = batch[:5]
+            preds = self.model(x, grid, edge_index, edge_features)
+        else: 
+            x, y, grid = batch[:3]
+            preds = self.model(x, grid)
+        batch_size = x.shape[0]
+        return x, y, preds, batch_size
 
     def training_step(self, batch, batch_idx):
-        preds, batch_size = self._get_preds(batch)
-        y = batch[1]
+        x, y, preds, batch_size = self._get_preds(batch)
         loss = self._loss_fn(preds.reshape(batch_size,-1), y.reshape(batch_size,-1))
         self._train_acc(preds.reshape(batch_size,-1), y.reshape(batch_size,-1))
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
@@ -80,18 +97,21 @@ class LightningModel(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        preds, batch_size = self._get_preds(batch)
-        y = batch[1]
+        x, y, preds, batch_size = self._get_preds(batch)
         loss = self._loss_fn(preds.reshape(batch_size,-1), y.reshape(batch_size,-1))
         self._val_acc(preds.reshape(batch_size,-1), y.reshape(batch_size,-1))
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
         self.log('val/mae', self._val_acc, on_step=False, on_epoch=True, prog_bar=True, logger=True)
         
     def predict_step(self, batch, batch_idx):
-        preds, batch_size = self._get_preds(batch)
-        plain_actuals = batch[1]
-        last_observation = batch[0][..., -1]
-        return preds, plain_actuals, last_observation
+        x, y, preds, batch_size = self._get_preds(batch)
+        # if we have transformed the data we need to undo that transform
+        if(self.transform is not None):
+            x = self.transform.inverse_transform(x)
+            y = self.transform.inverse_transform(y)
+            preds = self.transform.inverse_transform(preds)
+        last_observation = x[..., -1]
+        return preds, y, last_observation
 
     def configure_optimizers(self):
         # get the optimizer
