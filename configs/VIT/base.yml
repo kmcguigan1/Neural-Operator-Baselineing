@@ -1,7 +1,8 @@
 # run information
-METHODOLOGY: gno
+METHODOLOGY: vit
 SEED: 1999
 DATA_FILE: basic_heat_dataset.npy
+
 # DATA_FILE: heat_sinusoidal_init_varying_diffusivity_periodic_boundaries.npy
 
 # dataloader info
@@ -9,19 +10,17 @@ TIME_STEPS_IN: 7
 TIME_STEPS_OUT: 28
 BATCH_SIZE: 16
 TIME_INT: 1
-USE_GRID: False
-
-GRAPH_DATA_LOADER: True
+USE_GRID: True
 
 # model information
 LATENT_DIMS: 32
-NEIGHBORS: radial
-DROP_RATE: 0.2
-MLP_RATIO: 2
-DEPTH: 2
+PATCH_SIZE: [7,7]
+DEPTH: 3
+NHEAD: 1
+DROPOUT: 0.2
 
 # train information
-EPOCHS: 2
+EPOCHS: 3
 
 OPTIMIZER: 
   KIND: adam

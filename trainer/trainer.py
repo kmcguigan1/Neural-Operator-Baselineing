@@ -1,13 +1,16 @@
+import time
 import numpy as np
+from prettytable import PrettyTable
 
-from torchmetrics import Metric
 import torch
 # torch.autograd.set_detect_anomaly(True)
 from torch.nn import MSELoss
 
-import time
+from einops import rearrange
 
+from torchmetrics import Metric
 from torchsummary import summary
+
 import lightning.pytorch as pl
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import Callback, EarlyStopping, ModelCheckpoint, LearningRateMonitor, RichProgressBar, TQDMProgressBar, ProgressBar
@@ -23,6 +26,7 @@ from models.conv_lstm import ConvLSTMModel
 from models.afno import AFNO
 from models.gno import GNO
 from models.persistance import PersistanceModel
+from models.vit import VIT
 # from models.afno_simple import SimpleAFNO
 # from models.vit import VIT
 # from models.custom_afno import CustomAFNO
@@ -86,6 +90,19 @@ class LpLoss(object):
     def __call__(self, x, y):
         return self.rel(x, y)
 
+def count_parameters(model):
+    table = PrettyTable(["Modules", "Parameters"])
+    total_params = 0
+    for name, parameter in model.named_parameters():
+        if not parameter.requires_grad: 
+            continue
+        param = parameter.numel()
+        table.add_row([name, param])
+        total_params+=param
+    print(table)
+    print(f"Total Trainable Params: {total_params}")
+    return total_params
+
 class LightningModel(pl.LightningModule):
     def __init__(self, config:dict, constants_object:ConstantsObject, train_example_count:int, image_shape:tuple, transform:DataTransform = None) -> None:
         # lightning information
@@ -120,16 +137,27 @@ class LightningModel(pl.LightningModule):
             self.model = GNO(config, self._image_shape)
         elif(constants_object.EXP_KIND == 'PERSISTANCE'):
             self.model = PersistanceModel(config, self._image_shape)
+        elif(constants_object.EXP_KIND == 'VIT'):
+            self.model = VIT(config, self._image_shape)
         else:
             raise Exception(f"{constants_object.EXP_KIND} is not implemented please implement this.")
 
     def _print_summary(self, sample_shapes):
-        summary(self.model, sample_shapes)
+        if(self.graph_style_loader):
+            count_parameters(self.model)
+        else:
+            summary(self.model, sample_shapes)
+
+    def _process_graph_batch(self, batch):
+        x, y, grid, edge_index, edge_features = batch[:5]
+        preds = torch.zeros_like(y, device=x.device)
+        for batch_idx in range(x.shape[0]):
+            preds[batch_idx, ...] = self.model(x[batch_idx, ...], grid[batch_idx, ...], edge_index[batch_idx, ...], edge_features[batch_idx, ...])
+        return x, y, preds
 
     def _get_preds(self, batch):
         if(self.graph_style_loader):
-            x, y, grid, edge_index, edge_features = batch[:5]
-            preds = self.model(x, grid, edge_index, edge_features)
+            x, y, preds = self._process_graph_batch(batch)
         else: 
             x, y, grid = batch[:3]
             preds = self.model(x, grid)
@@ -153,6 +181,11 @@ class LightningModel(pl.LightningModule):
         
     def predict_step(self, batch, batch_idx):
         x, y, preds, batch_size = self._get_preds(batch)
+        # if we have a graph style loader reshape the images
+        if(self.graph_style_loader):
+            x = rearrange(x, 'b (h w) f -> b h w f', b=batch_size, h=self._image_shape[0], w=self._image_shape[1], f=self._config['TIME_STEPS_IN'])
+            y = rearrange(y, 'b (h w) f -> b h w f', b=batch_size, h=self._image_shape[0], w=self._image_shape[1], f=self._config['TIME_STEPS_OUT'])
+            preds = rearrange(preds, 'b (h w) f -> b h w f', b=batch_size, h=self._image_shape[0], w=self._image_shape[1], f=self._config['TIME_STEPS_OUT'])
         # if we have transformed the data we need to undo that transform
         if(self.transform is not None):
             x = self.transform.inverse_transform(x)

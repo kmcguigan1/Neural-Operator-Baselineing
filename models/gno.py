@@ -29,7 +29,7 @@ class CustomMessagePassing(MessagePassing):
     def __init__(self, node_features:int, edge_features:int, mlp_ratio:int=1):
         super().__init__(aggr='add')
         self.W = MLP(node_features, node_features)
-        self.K = MLP(node_features * 2 + grid_dims * 2 + 1, node_features)
+        self.K = MLP(node_features * 2 + edge_features, node_features)
 
     def forward(self, x, edge_index, edge_features):
         x = self.propagate(edge_index, x=x, edge_features=edge_features)
@@ -46,6 +46,7 @@ class CustomMessagePassing(MessagePassing):
 
 class GNO(nn.Module):
     def __init__(self, config:dict, img_size:tuple):
+        super().__init__()
         self.img_size = img_size
         self.latent_dims = config["LATENT_DIMS"]
         self.steps_in = config["TIME_STEPS_IN"]
@@ -56,14 +57,15 @@ class GNO(nn.Module):
         # dropout information
         self.drop_rate = config["DROP_RATE"]
         # setup layers
-        self.project = MLP(self.in_dims, config['LATENT_DIMS'], config['LATENT_DIMS'] * self.mlp_ratio, "Projection Layer")
-        self.decode = MLP(config['LATENT_DIMS'], 1, config['LATENT_DIMS'] * self.mlp_ratio, "UnProjection Layer")
+        self.project = MLP(self.in_dims, config['LATENT_DIMS'], config['LATENT_DIMS'] * self.mlp_ratio)
+        self.decode = MLP(config['LATENT_DIMS'], 1, config['LATENT_DIMS'] * self.mlp_ratio)
         # create the graph layers
         self.blocks = nn.ModuleList([
-            CustomMessagePassing(self.latent_dims, 2, self.mlp_ratio)
+            CustomMessagePassing(self.latent_dims, 5, mlp_ratio=self.mlp_ratio)
         ])
 
     def forward(self, x, grid, edge_index, edge_features):
+        edge_index = edge_index.to(torch.int64)
         x = torch.cat((x, grid), dim=-1)
         x = self.project(x)
 

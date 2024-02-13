@@ -35,14 +35,11 @@ def main():
         val_data_loader, 
         train_example_count, 
         train_example_shape, 
+        img_size,
         transform
     ) = get_train_data_loaders(config, constants_object)
     # get the model
-    if(len(train_example_shape) == 2):
-        img_size = (train_example_shape[0][-3],train_example_shape[0][-2])
-    else:
-        img_size = (train_example_shape[-3], train_example_shape[-2])
-    print(img_size)
+    print("Image Size: ", img_size)
     model = LightningModel(config, constants_object, train_example_count, img_size)
     if(constants_object.EXP_KIND != 'PERSISTANCE'):
         model._print_summary(train_example_shape)

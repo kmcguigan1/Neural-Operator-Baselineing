@@ -28,7 +28,7 @@ class GraphPDEDataset(torch.utils.data.Dataset):
         if(config["NEIGHBORS"] == "radial"):
             distance_cuttoff = 1.9 * (single_dist)
         connections = np.where(np.logical_and(distances < distance_cuttoff, distances > 0))
-        self.edges = np.vstack(connections)
+        self.edges = np.vstack(connections).astype(np.int32)
         # get the features of each edge such as the distance and the cos and sin of the angle
         self.edge_features = distances[connections[0], connections[1]].reshape(-1, 1)
         self.edge_features = np.concatenate((
@@ -45,12 +45,18 @@ class GraphPDEDataset(torch.utils.data.Dataset):
             for time_idx in range(0, self.array.shape[1], config["TIME_INT"]):
                 if(time_idx < self.array.shape[1] - self.time_steps_in - self.time_steps_out):
                     self.indecies_map.append((example_idx, time_idx))
-    
+        # # make everything tensors
+        # self.array = torch.tensor(self.array, dtype=torch.float32)
+        # self.grid = torch.tensor(self.grid, dtype=torch.float32)
+        # self.edges = torch.tensor(self.edges, dtype=torch.int32)
+        # self.edge_features = torch.tensor(self.edge_features, dtype=torch.float32)
+
     def __len__(self):
         return len(self.indecies_map)
 
     def generate_example_shape(self):
-        X, y, grid, edges, edge_features = self.__getitem__(0)
+        outputs = self.__getitem__(0)
+        X, y, grid, edges, edge_features = outputs
         return (X.shape, grid.shape, edges.shape, edge_features.shape)
 
     def __getitem__(self, idx):
@@ -58,8 +64,6 @@ class GraphPDEDataset(torch.utils.data.Dataset):
         # get the observations
         X = self.array[exmaple_idx, time_idx:time_idx+self.time_steps_in, ...]
         y = self.array[exmaple_idx, time_idx+self.time_steps_in:time_idx+self.time_steps_in+self.time_steps_out, ...]
-        print(X.shape)
-        print(y.shape)
         # reshape the array so that time is last
         X = X.transpose([1, 0])
         y = y.transpose([1, 0])
@@ -69,7 +73,7 @@ class GraphPDEDataset(torch.utils.data.Dataset):
 def create_graph_data_loader(array: np.ndarray, config: dict, shuffle: bool = True):
     dataset = GraphPDEDataset(array, config)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=config['BATCH_SIZE'], shuffle=shuffle, num_workers=3, persistent_workers=True, pin_memory=False)
-    return data_loader, len(dataset), dataset.generate_example_shape()
+    return data_loader, len(dataset), dataset.generate_example_shape(), (dataset.nx, dataset.ny)
 
 def test():
     # Ex, Time, X, Y

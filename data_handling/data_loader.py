@@ -6,6 +6,7 @@ class PDEDataset(torch.utils.data.Dataset):
         super().__init__()
         # save the data that we need
         self.array = array.copy().astype(np.float32) # (example, time, x, y)
+        self.image_shape = self.array.shape[-2:]
         self.return_grid = False
         if("USE_GRID" in config.keys() and config["USE_GRID"] == True):
             self.return_grid = True
@@ -54,4 +55,4 @@ class PDEDataset(torch.utils.data.Dataset):
 def create_data_loader(array: np.ndarray, config: dict, shuffle: bool = True):
     dataset = PDEDataset(array, config)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=config['BATCH_SIZE'], shuffle=shuffle, num_workers=3, persistent_workers=True, pin_memory=False)
-    return data_loader, len(dataset), dataset.generate_example_shape()
+    return data_loader, len(dataset), dataset.generate_example_shape(), dataset.image_shape
