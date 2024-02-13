@@ -40,7 +40,7 @@ def main():
     ) = get_train_data_loaders(config, constants_object)
     # get the model
     print("Image Size: ", img_size)
-    model = LightningModel(config, constants_object, train_example_count, img_size)
+    model = LightningModel(config, constants_object, train_example_count, img_size, transform=transform)
     if(constants_object.EXP_KIND != 'PERSISTANCE'):
         model._print_summary(train_example_shape)
     # get and fit the trainer

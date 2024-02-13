@@ -1,9 +1,9 @@
 # run information
 METHODOLOGY: persistance
 SEED: 1999
-# DATA_FILE: basic_heat_dataset.npy
+DATA_FILE: basic_heat_dataset.npy
 
-DATA_FILE: heat_sinusoidal_init_varying_diffusivity_periodic_boundaries.npy
+# DATA_FILE: heat_sinusoidal_init_varying_diffusivity_periodic_boundaries.npy
 
 # dataloader info
 TIME_STEPS_IN: 1
@@ -13,6 +13,8 @@ TIME_INT: 1
 USE_GRID: True
 
 EPOCHS: 1
+
+NORMALIZER: gaus
 
 OPTIMIZER: 
   KIND: adam
