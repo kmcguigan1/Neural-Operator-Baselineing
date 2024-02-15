@@ -14,7 +14,7 @@ USE_GRID: True
 
 EPOCHS: 1
 
-NORMALIZER: gaus
+NORMALIZER: range
 
 OPTIMIZER: 
   KIND: adam
