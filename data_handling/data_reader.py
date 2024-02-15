@@ -50,7 +50,7 @@ def get_train_data_loaders(config: dict, constants_object: ConstantsObject):
     elif('NORMALIZER' in config.keys() and config['NORMALIZER'] == 'range'):
         transform = RangeNorm()
     # if the transfrom is not none then we fit it and stuff
-    if(transform is not None and np.logical_or('PER_INSTANCE' not in config.keys(), config['PER_INSTANCE'] == False)):
+    if(transform is not None):
         train_data = transform.fit_transform(train_data)
         val_data = transform.transform(val_data)
     # now build the dataloaders
@@ -64,7 +64,7 @@ def get_train_data_loaders(config: dict, constants_object: ConstantsObject):
 
 def get_test_data_loader(config: dict, constants_object: ConstantsObject, transform:DataTransform):
     _, _, test_data = load_dataset(config, constants_object)
-    if(transform is not None and np.logical_or('PER_INSTANCE' not in config.keys(), config['PER_INSTANCE'] == False)):
+    if(transform is not None):
         test_data = transform.transform(test_data)
     test_data_loader, test_example_count, test_example_shape = create_data_loader(test_data, config, shuffle=False)
     return test_data_loader
