@@ -44,20 +44,7 @@ class RangeNorm(DataTransform):
     def transform(self, array:np.array) -> np.array:
         return (array - self.lower) / (self.upper - self.lower)
     def inverse_transform(self, array:np.array) -> np.array:
-        return array * (self.upper - self.lower) + self.lower
-
-class L1Norm(DataTransform):
-    def __init__(self):
-        super().__init__()
-        self.lower = None
-        self.upper = None
-    def fit(self, array:np.array) -> None:
-        self.lower = np.min(array)
-        self.upper = np.max(array)
-    def transform(self, array:np.array) -> np.array:
-        return (array - self.lower) / (self.upper - self.lower)
-    def inverse_transform(self, array:np.array) -> np.array:
-        return array * (self.upper - self.lower) + self.lower     
+        return array * (self.upper - self.lower) + self.lower 
         
 def test():
     array = np.random.normal(loc=5.0, scale=3.0, size=(5,4,2,2))

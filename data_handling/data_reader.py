@@ -51,8 +51,14 @@ def get_train_data_loaders(config: dict, constants_object: ConstantsObject):
         transform = RangeNorm()
     # if the transfrom is not none then we fit it and stuff
     if(transform is not None):
+        print(f"Train Data mean {train_data.mean():.4f} var {train_data.std():.4f} min {train_data.min():.4f} max {train_data.max():.4f}")
+        print(f"Val Data mean {val_data.mean():.4f} var {val_data.std():.4f} min {val_data.min():.4f} max {val_data.max():.4f}")
         train_data = transform.fit_transform(train_data)
         val_data = transform.transform(val_data)
+        print("Post Transform")
+        print(f"Train Data mean {train_data.mean():.4f} var {train_data.std():.4f} min {train_data.min():.4f} max {train_data.max():.4f}")
+        print(f"Val Data mean {val_data.mean():.4f} var {val_data.std():.4f} min {val_data.min():.4f} max {val_data.max():.4f}")
+
     # now build the dataloaders
     if(constants_object.EXP_KIND == 'GNO'):
         train_data_loader, train_example_count, train_example_shape, train_img_size = create_graph_data_loader(train_data, config, shuffle=True)
@@ -65,7 +71,11 @@ def get_train_data_loaders(config: dict, constants_object: ConstantsObject):
 def get_test_data_loader(config: dict, constants_object: ConstantsObject, transform:DataTransform):
     _, _, test_data = load_dataset(config, constants_object)
     if(transform is not None):
+        print(f"Test Data mean {test_data.mean():.4f} var {test_data.std():.4f} min {test_data.min():.4f} max {test_data.max():.4f}")
         test_data = transform.transform(test_data)
+        print("Post Transform")
+        print(f"Test Data mean {test_data.mean():.4f} var {test_data.std():.4f} min {test_data.min():.4f} max {test_data.max():.4f}")
+
     if(constants_object.EXP_KIND == 'GNO'):
         test_data_loader, test_example_count, test_example_shape, test_img_shape = create_graph_data_loader(test_data, config, shuffle=False)
     else:

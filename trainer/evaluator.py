@@ -105,6 +105,8 @@ def log_step_metric(split_name, metric_name, metric_values, use_wandb):
 def evaluate_model(trainer, model, data_loader, split_name, use_wandb=False):
     forecasts, actuals, last_input = extract_model_outputs(trainer, model, data_loader)
     print(f"forecasts: {forecasts.shape} actuals {actuals.shape} last input: {last_input.shape}")
+    print(f"Forecasts Data mean {forecasts.mean():.4f} var {forecasts.std():.4f} min {forecasts.min():.4f} max {forecasts.max():.4f}")
+    print(f"Actuals Data mean {actuals.mean():.4f} var {actuals.std():.4f} min {actuals.min():.4f} max {actuals.max():.4f}")
     # do all the simple metrics on the model predictions
     calculate_mean_absolute_error(forecasts, actuals, 'mean_absolute_error', split_name, use_wandb=use_wandb)
     calculate_mean_squared_error(forecasts, actuals, 'mean_squared_error', split_name, use_wandb=use_wandb)
@@ -121,3 +123,6 @@ def evaluate_model(trainer, model, data_loader, split_name, use_wandb=False):
     calculate_mean_absolute_error(forecasts, actuals, 'delta_actuals_weighted_mean_absolute_error', split_name, weighted_delta=weighted_delta_actuals, use_wandb=use_wandb)
     calculate_mean_absolute_error(delta_forecasts, delta_actuals, 'delta_forecast_weighted_delta_mean_absolute_error', split_name, weighted_delta=weighted_delta_forecasts, use_wandb=use_wandb)
     calculate_mean_absolute_error(delta_forecasts, delta_actuals, 'delta_actuals_weighted_delta_mean_absolute_error', split_name, weighted_delta=weighted_delta_actuals, use_wandb=use_wandb)
+
+
+# def save_model_predictions()
