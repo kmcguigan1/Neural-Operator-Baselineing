@@ -5,7 +5,7 @@ import wandb
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch import seed_everything
 
-from data_handling.data_reader import get_train_data_loaders, get_test_data_loader
+from data_handling.data_reader import get_train_data_loaders, get_test_data_loaders
 from trainer.trainer import LightningModel, get_lightning_trainer
 from trainer.evaluator import evaluate_model
 from utils.constants_handler import ConstantsObject
@@ -36,11 +36,11 @@ def main():
         train_example_count, 
         train_example_shape, 
         img_size,
-        transform
+        dataset_statistics
     ) = get_train_data_loaders(config, constants_object)
     # get the model
     print("Image Size: ", img_size)
-    model = LightningModel(config, constants_object, train_example_count, img_size, transform=transform)
+    model = LightningModel(config, constants_object, train_example_count, img_size)
     if(constants_object.EXP_KIND != 'PERSISTANCE'):
         model._print_summary(train_example_shape)
     # get and fit the trainer
@@ -55,14 +55,18 @@ def main():
     # evaluate the model on all datasets
     if(args.run_wandb):
         wandb.log({'average_time_per_epoch':average_time_per_epoch, 'total_epochs':total_epochs})
-    evaluate_model(trainer, model, train_data_loader, 'train', use_wandb=args.run_wandb)
+    # delete the training loaders and move to the testing ones
     del train_data_loader
-    gc.collect()
-    evaluate_model(trainer, model, val_data_loader, 'val', use_wandb=args.run_wandb)
     del val_data_loader
     gc.collect()
-    test_data_loader = get_test_data_loader(config, constants_object, transform)
-    evaluate_model(trainer, model, test_data_loader, 'test', use_wandb=args.run_wandb)
+    (
+        train_set_eval_data_loader,
+        val_set_eval_data_loader,
+        test_set_eval_data_loader
+    ) = get_test_data_loaders(config, constants_object, dataset_statistics)
+    evaluate_model(config, trainer, model, train_set_eval_data_loader, 'train', dataset_statistics, use_wandb=args.run_wandb)
+    evaluate_model(config, trainer, model, val_set_eval_data_loader, 'val', dataset_statistics, use_wandb=args.run_wandb)
+    evaluate_model(config, trainer, model, test_set_eval_data_loader, 'test', dataset_statistics, use_wandb=args.run_wandb)
 
 if __name__ == '__main__':
     main()

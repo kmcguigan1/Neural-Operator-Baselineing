@@ -4,9 +4,13 @@ import torch
 from scipy.spatial.distance import cdist
 
 class GraphPDEDataset(torch.utils.data.Dataset):
-    def __init__(self, array: np.ndarray, config: dict):
+    def __init__(self, array: np.ndarray, config: dict, dataset_statistics:dict, inference_mode:bool=False):
         super().__init__()
         # save the data that we need
+        self.dataset_statistics = dataset_statistics
+        self.transform = None
+        if("NORMALIZER" in config.keys()):
+            self.transform = config["NORMALIZER"]
         self.array = array.copy().astype(np.float32) # (example, time, x, y)
         self.nx = array.shape[-2]
         self.ny = array.shape[-1]
@@ -59,19 +63,30 @@ class GraphPDEDataset(torch.utils.data.Dataset):
         X, y, grid, edges, edge_features = outputs
         return (X.shape, grid.shape, edges.shape, edge_features.shape)
 
+    def apply_transform(self, arr):
+        if(self.transform == 'gaus'):
+            arr = (arr - self.dataset_statistics['mean']) / self.dataset_statistics['var']
+        elif(self.transform == 'range'):
+            arr = (arr - self.dataset_statistics['min']) / (self.dataset_statistics['max'] - self.dataset_statistics['min'])
+        return arr
+
     def __getitem__(self, idx):
         (exmaple_idx, time_idx) = self.indecies_map[idx]
         # get the observations
         X = self.array[exmaple_idx, time_idx:time_idx+self.time_steps_in, ...]
         y = self.array[exmaple_idx, time_idx+self.time_steps_in:time_idx+self.time_steps_in+self.time_steps_out, ...]
+        # apply transforms
+        X = self.apply_transform(X)
+        if(not self.inference_mode):
+            y = self.apply_transform(y)
         # reshape the array so that time is last
         X = X.transpose([1, 0])
         y = y.transpose([1, 0])
         # return the data
         return X, y, self.grid, self.edges, self.edge_features
 
-def create_graph_data_loader(array: np.ndarray, config: dict, shuffle: bool = True):
-    dataset = GraphPDEDataset(array, config)
+def create_graph_data_loader(array: np.ndarray, config: dict, dataset_statistics:dict, shuffle: bool = True, inference_mode:bool=False):
+    dataset = GraphPDEDataset(array, config, dataset_statistics, inference_mode=inference_mode)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=config['BATCH_SIZE'], shuffle=shuffle, num_workers=3, persistent_workers=True, pin_memory=False)
     return data_loader, len(dataset), dataset.generate_example_shape(), (dataset.nx, dataset.ny)
 

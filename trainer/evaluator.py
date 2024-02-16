@@ -102,8 +102,22 @@ def log_step_metric(split_name, metric_name, metric_values, use_wandb):
         print(f"{split_name} {metric_name}: {metric_values}")
     return
 
-def evaluate_model(trainer, model, data_loader, split_name, use_wandb=False):
+def inverse_transform(config, dataset_statistics, forecasts, last_input):
+    if("NORMALIZER" not in config.keys()):
+        return forecasts, last_input
+    if(config["NORMALIZER"] == 'gaus'):
+        forecasts = forecasts * dataset_statistics['var'] + dataset_statistics['mean']
+        last_input = last_input * dataset_statistics['var'] + dataset_statistics['mean']
+    elif(config["NORMALIZER"] == 'range'):
+        forecasts = forecasts * (dataset_statistics['max'] - dataset_statistics['min']) + dataset_statistics['min']
+        last_input = last_input * (dataset_statistics['max'] - dataset_statistics['min']) + dataset_statistics['min']
+    else:
+        raise Exception(f"normalization inverse has not been defined {config['NORMALIZER']}")
+    return forecasts, last_input
+
+def evaluate_model(config, trainer, model, data_loader, split_name, dataset_statistics, use_wandb=False):
     forecasts, actuals, last_input = extract_model_outputs(trainer, model, data_loader)
+    forecasts, last_input = inverse_transform(config, dataset_statistics, forecasts, last_input)
     print(f"forecasts: {forecasts.shape} actuals {actuals.shape} last input: {last_input.shape}")
     print(f"Forecasts Data mean {forecasts.mean():.4f} var {forecasts.std():.4f} min {forecasts.min():.4f} max {forecasts.max():.4f}")
     print(f"Actuals Data mean {actuals.mean():.4f} var {actuals.std():.4f} min {actuals.min():.4f} max {actuals.max():.4f}")

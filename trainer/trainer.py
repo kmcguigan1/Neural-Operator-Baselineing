@@ -104,7 +104,7 @@ def count_parameters(model):
     return total_params
 
 class LightningModel(pl.LightningModule):
-    def __init__(self, config:dict, constants_object:ConstantsObject, train_example_count:int, image_shape:tuple, transform:DataTransform = None) -> None:
+    def __init__(self, config:dict, constants_object:ConstantsObject, train_example_count:int, image_shape:tuple) -> None:
         # lightning information
         super().__init__()
         self.automatic_optimization = True
@@ -113,7 +113,6 @@ class LightningModel(pl.LightningModule):
         self._train_example_count = train_example_count
         self._image_shape = image_shape
         # determine things about our loader
-        self.transform = transform
         self.graph_style_loader = False
         if("GRAPH_DATA_LOADER" in config.keys() and config["GRAPH_DATA_LOADER"] == True):
             self.graph_style_loader = True
@@ -186,11 +185,6 @@ class LightningModel(pl.LightningModule):
             x = rearrange(x, 'b (h w) f -> b h w f', b=batch_size, h=self._image_shape[0], w=self._image_shape[1], f=self._config['TIME_STEPS_IN'])
             y = rearrange(y, 'b (h w) f -> b h w f', b=batch_size, h=self._image_shape[0], w=self._image_shape[1], f=self._config['TIME_STEPS_OUT'])
             preds = rearrange(preds, 'b (h w) f -> b h w f', b=batch_size, h=self._image_shape[0], w=self._image_shape[1], f=self._config['TIME_STEPS_OUT'])
-        # if we have transformed the data we need to undo that transform
-        if(self.transform is not None):
-            x = self.transform.inverse_transform(x)
-            y = self.transform.inverse_transform(y)
-            preds = self.transform.inverse_transform(preds)
         last_observation = x[..., -1]
         return preds, y, last_observation
 
