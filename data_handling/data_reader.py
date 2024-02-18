@@ -8,8 +8,8 @@ from data_handling.transforms import GausNorm, RangeNorm, DataTransform
 
 def cut_data(config: dict, array: np.array):
     if(config['METHODOLOGY'] == 'afno' or config['METHODOLOGY'] == 'vit'):
-        x_cut = array.shape[-2] % config['PATCH_SIZE'][0]
-        y_cut = array.shape[-1] % config['PATCH_SIZE'][1]
+        x_cut = array.shape[-2] % config['PATCH_SIZE']
+        y_cut = array.shape[-1] % config['PATCH_SIZE']
         if(x_cut > 0):
             array = array[..., :-x_cut, :]
         if(y_cut > 0):

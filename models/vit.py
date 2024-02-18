@@ -64,7 +64,7 @@ class VIT(nn.Module):
         self.img_size = img_size
         self.latent_dims = config["LATENT_DIMS"]
         self.forecast_steps = config["TIME_STEPS_OUT"]
-        self.patch_size = config['PATCH_SIZE']
+        self.patch_size = [config['PATCH_SIZE'], config['PATCH_SIZE']]
         self.in_dims = config['TIME_STEPS_IN'] + 2
         self.out_dims = 1
         # self.mlp_ratio = config['MLP_RATIO']

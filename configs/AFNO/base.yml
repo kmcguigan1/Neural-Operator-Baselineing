@@ -13,7 +13,7 @@ TIME_INT: 1
 USE_GRID: True
 
 # model information
-PATCH_SIZE: [5, 5]
+PATCH_SIZE: 5
 LATENT_DIMS: 32
 NUM_BLOCKS: 4
 DROP_RATE: 0.2
