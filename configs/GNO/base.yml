@@ -1,7 +1,7 @@
 # run information
 METHODOLOGY: gno
 SEED: 1999
-DATA_FILE: basic_heat_dataset.npy
+DATA_FILE: diffusion_varying_sinusoidal_init_varying_diffusivity_periodic_boundaries.npy
 # DATA_FILE: heat_sinusoidal_init_varying_diffusivity_periodic_boundaries.npy
 
 # dataloader info
@@ -21,7 +21,7 @@ MLP_RATIO: 2
 DEPTH: 2
 
 # train information
-EPOCHS: 2
+EPOCHS: 100
 
 OPTIMIZER: 
   KIND: adam
