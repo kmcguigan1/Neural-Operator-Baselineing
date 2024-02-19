@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#SBATCH --array=1-5
+
 #SBATCH --nodes 1
 
 #SBATCH --gpus-per-node=1 # request a GPU
@@ -37,12 +39,9 @@ source /home/kmcguiga/projects/def-sirisha/kmcguiga/environments/torch/bin/activ
 echo "starting program"
 
 expKind=${1:-None}
-expName=${2:-None}
+expName="exp${SLURM_ARRAY_TASK_ID}.yml"
 echo "experiment kind $expKind"
 echo "experiment name $expName"
-
-wandb offline
-echo "Running wandb offline"
 
 python main.py --exp-kind=$expKind --exp-name=$expName --run-wandb
 
