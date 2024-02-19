@@ -225,7 +225,7 @@ class TimingCallback(Callback):
 
 def get_lightning_trainer(config: dict, lightning_logger: WandbLogger = None, accelerator: str = 'auto'):
     # define the callbacks we want to use
-    lr_monitor = LearningRateMonitor(logging_interval='step')
+    lr_monitor = LearningRateMonitor(logging_interval='epoch')
     early_stopping = EarlyStopping('val/loss', patience=4)
     model_checkpoint_val_loss = ModelCheckpoint(monitor="val/loss", mode="min", filename="Ep{epoch:02d}-val{val/loss:.2f}-best", auto_insert_metric_name=False, verbose=True)
     timer_callback = TimingCallback()
@@ -235,7 +235,7 @@ def get_lightning_trainer(config: dict, lightning_logger: WandbLogger = None, ac
         max_epochs=config['EPOCHS'],
         deterministic=False,
         callbacks=[early_stopping, model_checkpoint_val_loss, lr_monitor, timer_callback],
-        log_every_n_steps=10
+        log_every_n_steps=30
     )
     return trainer, timer_callback
 

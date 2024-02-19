@@ -14,18 +14,6 @@ from utils.constants_handler import ConstantsObject
 ENTITY = "kmcguigan"
 PROJECT = "PDE-Operators-Baselines"
 
-def setup_wandb(args, config, constant_object):
-    # login and setup wandb
-    if(args.run_wandb):
-        wandb.login(key=constant_object.WANDB_KEY)
-        lightning_logger = WandbLogger(log_model="all", project=PROJECT, group=config['METHODOLOGY'])
-        lightning_logger.log_hyperparams(config)
-        run_name = wandb.run.name
-    else:
-        lightning_logger = None
-        run_name = datetime.today().strftime("%Y-%m-%d-%H-%M-%S")
-    return lightning_logger, run_name
-
 def fix_config_info(config: dict):
     # fix the None or bools
     for key, val in config.items():
@@ -72,11 +60,11 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def setup_wandb(args, config: dict, constant_object: ConstantsObject):
+def setup_wandb(args, config: dict, constant_objects: ConstantsObject):
     # login and setup wandb
     if(args.run_wandb):
-        wandb.login(key=constant_object.WANDB_KEY)
-        lightning_logger = WandbLogger(log_model="all", project=PROJECT, group=config['METHODOLOGY'])
+        wandb.login(key=constant_objects.WANDB_KEY)
+        lightning_logger = WandbLogger(project=PROJECT, group=config['METHODOLOGY'], log_model=False)
         lightning_logger.log_hyperparams(config)
         run_name = wandb.run.name
     else:
