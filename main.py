@@ -20,6 +20,8 @@ def main():
     # get the constants to use for this run
     constants_object = ConstantsObject(args.exp_kind)
     config = load_config(constants_object, experiment_name=args.exp_name)
+    if("NORMALIZER" not in config.keys()):
+        config['NORMALIZER'] = None
     # add the experiment name to the config file
     config['EXP_NAME'] = args.exp_name
     config['EXP_KIND'] = args.exp_kind

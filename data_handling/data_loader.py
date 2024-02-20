@@ -6,9 +6,7 @@ class PDEDataset(torch.utils.data.Dataset):
         super().__init__()
         # save the data that we need
         self.dataset_statistics = dataset_statistics
-        self.transform = None
-        if("NORMALIZER" in config.keys()):
-            self.transform = config["NORMALIZER"]
+        self.transform = config["NORMALIZER"]
         self.inference_mode = inference_mode
         self.array = array.copy().astype(np.float32) # (example, time, x, y)
         self.image_shape = self.array.shape[-2:]
