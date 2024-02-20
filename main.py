@@ -44,7 +44,7 @@ def run_experiment(config: dict = None):
         # get the lightning model
         model = LightningModel(config, img_size)
         # get the trainer and fit it on the initial datasets
-        trainer, timer_callback = get_lightning_trainer(config)
+        trainer, timer_callback = get_lightning_trainer(config, dataset_statistics, img_size)
         trainer.fit(model=model, train_dataloaders=train_data_loader, val_dataloaders=val_data_loader)
         average_time_per_epoch = timer_callback._get_average_time_per_epoch()
         total_epochs = timer_callback.epoch_count
@@ -81,14 +81,14 @@ sweep_config = {
 }
 
 def run_sweep():
-    parameters = copy(BASE_PARAMETERS)
-    parameters.update(PARAMETERS)
-    parameters['EXP_KIND'] = {'value': METHOD}
-    sweep_config['parameters'] = parameters
-    sweep_id = wandb.sweep(sweep_config, project="PDE-Operators-Baselines")
-    print(f"Running Sweep {sweep_id}")
-    wandb.agent(sweep_id, run_experiment, count=25)
-    # wandb.agent('PDE-Operators-Baselines/2amxbq3d', run_experiment, count=30)
+    # parameters = copy(BASE_PARAMETERS)
+    # parameters.update(PARAMETERS)
+    # parameters['EXP_KIND'] = {'value': METHOD}
+    # sweep_config['parameters'] = parameters
+    # sweep_id = wandb.sweep(sweep_config, project="PDE-Operators-Baselines")
+    # print(f"Running Sweep {sweep_id}")
+    # wandb.agent(sweep_id, run_experiment, count=25)
+    wandb.agent('PDE-Operators-Baselines/vg50ny6d', run_experiment, count=10)
 
 if __name__ == '__main__':
     run_sweep()

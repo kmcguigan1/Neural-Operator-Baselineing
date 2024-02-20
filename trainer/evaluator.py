@@ -97,16 +97,14 @@ def log_step_metric(split_name, metric_name, metric_values, use_wandb):
     return
 
 def inverse_transform(config, dataset_statistics, forecasts, last_input):
-    if("NORMALIZER" not in config.keys()):
-        return forecasts, last_input
-    if(config["NORMALIZER"] == 'gaus'):
+    if(config["NORMALIZATION"] == 'gaus'):
         forecasts = forecasts * dataset_statistics['var'] + dataset_statistics['mean']
         last_input = last_input * dataset_statistics['var'] + dataset_statistics['mean']
-    elif(config["NORMALIZER"] == 'range'):
+    elif(config["NORMALIZATION"] == 'range'):
         forecasts = forecasts * (dataset_statistics['max'] - dataset_statistics['min']) + dataset_statistics['min']
         last_input = last_input * (dataset_statistics['max'] - dataset_statistics['min']) + dataset_statistics['min']
     else:
-        raise Exception(f"normalization inverse has not been defined {config['NORMALIZER']}")
+        raise Exception(f"normalization inverse has not been defined {config['NORMALIZATION']}")
     return forecasts, last_input
 
 def evaluate_model(config, trainer, model, data_loader, dataset_statistics, split_name, use_wandb=True):

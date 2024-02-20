@@ -214,12 +214,25 @@ class TimingCallback(Callback):
 
     def _get_average_time_per_epoch(self):
         return self.epoch_total / self.epoch_count
+    
+class MyEarlyStopping(EarlyStopping):
+    def on_validation_end(self, trainer, pl_module):
+        # override this to disable early stopping at the end of val loop
+        pass
 
-def get_lightning_trainer(config: dict, accelerator: str = 'auto'):
+def get_lightning_trainer(config: dict, dataset_statistics:dict, img_size:tuple, accelerator: str = 'auto'):
     # define the callbacks we want to use
     lightning_logger = WandbLogger(log_model=False)
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
     early_stopping = EarlyStopping('val/loss', patience=4)
+    variance = dataset_statistics['var']
+    if(config['NORMALIZATION'] == 'gaus'):
+        variance = 1
+    elif(config['NORMALIZATION'] == 'range'):
+        variance = 0.75
+    threshold = img_size[0] * img_size[1] * variance * 6
+    print("Stopping MAE threshold: ", threshold)
+    early_stopping_upper_bound = EarlyStopping('val/mae', patience=20, stopping_threshold=threshold)
     model_checkpoint_val_loss = ModelCheckpoint(monitor="val/loss", mode="min", filename="Ep{epoch:02d}-val{val/loss:.2f}-best", auto_insert_metric_name=False, verbose=True)
     timer_callback = TimingCallback()
     trainer = pl.Trainer(
