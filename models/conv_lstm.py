@@ -115,6 +115,5 @@ class ConvLSTMModel(nn.Module):
             b=B, f=self.forecast_steps, c=self.latent_dims, h=H, w=W    
         )
         x = self.head(latent_states)
-        x = F.sigmoid(x)
         x = torch.squeeze(x, dim=-1)
         return x

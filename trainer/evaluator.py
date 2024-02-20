@@ -104,6 +104,7 @@ def log_step_metric(split_name, metric_name, metric_values, use_wandb):
 
 def inverse_transform(config, dataset_statistics, forecasts, last_input):
     if("NORMALIZER" not in config.keys()):
+        raise Exception('')
         return forecasts, last_input
     if(config["NORMALIZER"] == 'gaus'):
         forecasts = forecasts * dataset_statistics['var'] + dataset_statistics['mean']

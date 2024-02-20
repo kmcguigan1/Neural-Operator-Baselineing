@@ -6,9 +6,7 @@ class PDEDataset(torch.utils.data.Dataset):
         super().__init__()
         # save the data that we need
         self.dataset_statistics = dataset_statistics
-        self.transform = None
-        if("NORMALIZER" in config.keys()):
-            self.transform = config["NORMALIZER"]
+        self.transform = config["NORMALIZER"]
         self.inference_mode = inference_mode
         self.array = array.copy().astype(np.float32) # (example, time, x, y)
         self.image_shape = self.array.shape[-2:]
@@ -54,7 +52,6 @@ class PDEDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         (exmaple_idx, time_idx) = self.indecies_map[idx]
-        print("getting item ", idx)
         # get the observations
         X = self.array[exmaple_idx, time_idx:time_idx+self.time_steps_in, ...]
         y = self.array[exmaple_idx, time_idx+self.time_steps_in:time_idx+self.time_steps_in+self.time_steps_out, ...]
@@ -65,7 +62,6 @@ class PDEDataset(torch.utils.data.Dataset):
         # reshape the array so that time is last
         X = X.transpose([1, 2, 0])
         y = y.transpose([1, 2, 0])
-        print(X.shape, y.shape)
         if(self.return_grid):
             return X, y, self.grid
         return X, y

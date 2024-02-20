@@ -138,7 +138,6 @@ class FNO2d(nn.Module):
             x = x.permute(0, 2, 3, 1)
             x = self.decode(x)
             x = torch.squeeze(x, axis=-1)
-            x = F.sigmoid(x)
             # save the prediction
             predictions[..., idx] = x
         # return the predictions
