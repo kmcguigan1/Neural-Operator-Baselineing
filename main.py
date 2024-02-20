@@ -73,22 +73,22 @@ def run_experiment(config: dict = None):
 
 from utils.base import BASE_PARAMETERS
 
-METHOD = 'FNO'
-from utils.fno_config import PARAMETERS
+METHOD = 'CONV_LSTM'
+from utils.conv_lstm_config import PARAMETERS
 
 sweep_config = {
     'method': 'random'
 }
 
 def run_sweep():
-    # parameters = copy(BASE_PARAMETERS)
-    # parameters.update(PARAMETERS)
-    # parameters['EXP_KIND'] = {'value': METHOD}
-    # sweep_config['parameters'] = parameters
-    # sweep_id = wandb.sweep(sweep_config, project="PDE-Operators-Baselines")
-    # print(f"Running Sweep {sweep_id}")
-    # wandb.agent(sweep_id, run_experiment, count=25)
-    wandb.agent('PDE-Operators-Baselines/vg50ny6d', run_experiment, count=10)
+    parameters = copy(BASE_PARAMETERS)
+    parameters.update(PARAMETERS)
+    parameters['EXP_KIND'] = {'value': METHOD}
+    sweep_config['parameters'] = parameters
+    sweep_id = wandb.sweep(sweep_config, project="PDE-Operators-Baselines")
+    print(f"Running Sweep {sweep_id}")
+    wandb.agent(sweep_id, run_experiment, count=20)
+    # wandb.agent('PDE-Operators-Baselines/vg50ny6d', run_experiment, count=10)
 
 if __name__ == '__main__':
     run_sweep()

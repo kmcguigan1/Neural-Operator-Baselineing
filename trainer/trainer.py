@@ -240,7 +240,7 @@ def get_lightning_trainer(config: dict, dataset_statistics:dict, img_size:tuple,
         logger=lightning_logger,
         max_epochs=config['EPOCHS'],
         deterministic=False,
-        callbacks=[early_stopping, model_checkpoint_val_loss, lr_monitor, timer_callback],
+        callbacks=[early_stopping, model_checkpoint_val_loss, lr_monitor, timer_callback, early_stopping_upper_bound],
         log_every_n_steps=10
     )
     return trainer, timer_callback
