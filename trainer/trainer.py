@@ -232,7 +232,7 @@ def get_lightning_trainer(config: dict, dataset_statistics:dict, img_size:tuple,
         variance = 0.75
     threshold = img_size[0] * img_size[1] * variance * 6
     print("Stopping MAE threshold: ", threshold)
-    early_stopping_upper_bound = EarlyStopping('val/mae', patience=20, stopping_threshold=threshold)
+    early_stopping_upper_bound = EarlyStopping('val/mae', patience=20, divergence_threshold=threshold)
     model_checkpoint_val_loss = ModelCheckpoint(monitor="val/loss", mode="min", filename="Ep{epoch:02d}-val{val/loss:.2f}-best", auto_insert_metric_name=False, verbose=True)
     timer_callback = TimingCallback()
     trainer = pl.Trainer(
