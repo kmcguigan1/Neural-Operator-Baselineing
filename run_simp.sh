@@ -4,11 +4,11 @@
 
 #SBATCH --tasks-per-node=1
 
-#SBATCH --cpus-per-task=8 # change this parameter to 2,4,6,... and increase "--num_workers" accordingly to see the effect on performance
+#SBATCH --cpus-per-task=12 # change this parameter to 2,4,6,... and increase "--num_workers" accordingly to see the effect on performance
 
 #SBATCH --mem=32G
 
-#SBATCH --time=00:15:00 # time (HH:MM:SS)
+#SBATCH --time=00:30:00 # time (HH:MM:SS)
 
 #SBATCH --output=/home/kmcguiga/projects/def-sirisha/kmcguiga/computeCanadaOutput/%j.out
 
@@ -39,6 +39,6 @@ expName=${2:-None}
 echo "experiment kind $expKind"
 echo "experiment name $expName"
 
-python main.py --exp-kind=$expKind --exp-name=$expName --run-wandb
+python main.py --exp-kind=$expKind --exp-name=$expName
 
 echo "Finished running"

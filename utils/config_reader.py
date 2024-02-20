@@ -18,7 +18,7 @@ def setup_wandb(args, config: dict, constant_object: ConstantsObject):
     # login and setup wandb
     if(args.run_wandb):
         wandb.login(key=constant_object.WANDB_KEY)
-        lightning_logger = WandbLogger(log_model="all", project=PROJECT, group=config['METHODOLOGY'], offline=constant_object.RUN_OFFLINE)
+        lightning_logger = WandbLogger(log_model="all", project=PROJECT, group=config['METHODOLOGY'])
         lightning_logger.log_hyperparams(config)
         run_name = wandb.run.name
     else:

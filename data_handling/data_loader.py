@@ -54,5 +54,5 @@ class PDEDataset(torch.utils.data.Dataset):
 
 def create_data_loader(array: np.ndarray, config: dict, shuffle: bool = True):
     dataset = PDEDataset(array, config)
-    data_loader = torch.utils.data.DataLoader(dataset, batch_size=config['BATCH_SIZE'], shuffle=shuffle, num_workers=3, persistent_workers=True, pin_memory=False)
+    data_loader = torch.utils.data.DataLoader(dataset, batch_size=config['BATCH_SIZE'], shuffle=shuffle, num_workers=0, persistent_workers=False, pin_memory=False)
     return data_loader, len(dataset), dataset.generate_example_shape(), dataset.image_shape
