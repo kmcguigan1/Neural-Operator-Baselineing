@@ -235,7 +235,7 @@ def get_lightning_trainer(config: dict, lightning_logger: WandbLogger = None, ac
         max_epochs=config['EPOCHS'],
         deterministic=False,
         callbacks=[early_stopping, model_checkpoint_val_loss, lr_monitor, timer_callback],
-        log_every_n_steps=30
+        log_every_n_steps=1
     )
     return trainer, timer_callback
 

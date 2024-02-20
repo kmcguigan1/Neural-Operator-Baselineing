@@ -54,7 +54,6 @@ class PDEDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         (exmaple_idx, time_idx) = self.indecies_map[idx]
-        print("getting item ", idx)
         # get the observations
         X = self.array[exmaple_idx, time_idx:time_idx+self.time_steps_in, ...]
         y = self.array[exmaple_idx, time_idx+self.time_steps_in:time_idx+self.time_steps_in+self.time_steps_out, ...]
@@ -65,12 +64,11 @@ class PDEDataset(torch.utils.data.Dataset):
         # reshape the array so that time is last
         X = X.transpose([1, 2, 0])
         y = y.transpose([1, 2, 0])
-        print(X.shape, y.shape)
         if(self.return_grid):
             return X, y, self.grid
         return X, y
 
 def create_data_loader(array: np.ndarray, config: dict, dataset_statistics:dict, shuffle: bool = True, inference_mode:bool=False):
     dataset = PDEDataset(array, config, dataset_statistics, inference_mode=inference_mode)
-    data_loader = torch.utils.data.DataLoader(dataset, batch_size=config['BATCH_SIZE'], shuffle=shuffle, num_workers=4, persistent_workers=True, pin_memory=False)
+    data_loader = torch.utils.data.DataLoader(dataset, batch_size=config['BATCH_SIZE'], shuffle=shuffle, num_workers=2, persistent_workers=False, pin_memory=False)
     return data_loader, len(dataset), dataset.generate_example_shape(), dataset.image_shape
