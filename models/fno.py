@@ -138,7 +138,6 @@ class FNO2d(nn.Module):
         latent_states = latent_states.permute(0, 3, 4, 1, 2)
         # decode the predictions
         x = self.decode(latent_states)
-        x = F.sigmoid(x)
         # permute so that we have the channels at the end again
         x = x.squeeze(dim=-1)
         return x

@@ -108,7 +108,6 @@ class VIT(nn.Module):
             latent_states[:, idx, :, :] = x
         # get the outputs
         x = self.head(latent_states)
-        x = F.sigmoid(x)
         x = rearrange(
             x,
             "b f (h w) (p1 p2 c_out) -> b (h p1) (w p2) f c_out",

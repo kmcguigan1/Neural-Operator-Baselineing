@@ -1,13 +1,10 @@
 import os
-from datetime import datetime
 import numpy as np
-
-from torch.utils.data import DataLoader
-import lightning.pytorch as pl
 
 import wandb
 
-from utils.constants_handler import ConstantsObject
+from torch.utils.data import DataLoader
+import lightning.pytorch as pl
 
 def calculate_mean_absolute_error(forecasts:np.array, actuals:np.array, metric_name:str, split_name:str, weighted_delta:np.array=None, use_wandb:bool=False) -> None:
     abs_error = np.abs(np.subtract(forecasts, actuals))
@@ -72,16 +69,13 @@ def parse_model_outputs(preds:list, idx:int) -> np.array:
     ])
     return predictions
 
-def extract_model_outputs(trainer, model, data_loader, transforms=[]):
+def extract_model_outputs(trainer, model, data_loader):
     # get the prediction outputs
     preds = trainer.predict(model, data_loader)
     # get the forecasts
     forecasts = parse_model_outputs(preds, 0)
     actuals = parse_model_outputs(preds, 1)
     last_input = parse_model_outputs(preds, 2)
-    # we are going to need to undo any transformations applied to the forecasts
-    for transform in transforms:
-        forecasts = transform.inverse(forecasts, last_input)
     # flatten the values so that we don't have 2 spatial domains
     forecasts, actuals, last_input = flatten_outputs(forecasts, actuals, last_input)
     # return the now real data
@@ -115,7 +109,7 @@ def inverse_transform(config, dataset_statistics, forecasts, last_input):
         raise Exception(f"normalization inverse has not been defined {config['NORMALIZER']}")
     return forecasts, last_input
 
-def evaluate_model(config, trainer, model, data_loader, split_name, dataset_statistics, use_wandb=False):
+def evaluate_model(config, trainer, model, data_loader, dataset_statistics, split_name, use_wandb=True):
     forecasts, actuals, last_input = extract_model_outputs(trainer, model, data_loader)
     forecasts, last_input = inverse_transform(config, dataset_statistics, forecasts, last_input)
     print(f"forecasts: {forecasts.shape} actuals {actuals.shape} last input: {last_input.shape}")

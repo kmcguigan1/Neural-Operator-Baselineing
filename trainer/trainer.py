@@ -15,10 +15,6 @@ import lightning.pytorch as pl
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import Callback, EarlyStopping, ModelCheckpoint, LearningRateMonitor, RichProgressBar, TQDMProgressBar, ProgressBar
 
-# import the models that we have
-from utils.constants_handler import ConstantsObject
-from data_handling.transforms import DataTransform
-
 # from models.afno_boundary_conditions import AFNO
 from models.fno import FNO2d
 from models.basic_fno import FNO2d as BasicFNO2d
@@ -104,13 +100,12 @@ def count_parameters(model):
     return total_params
 
 class LightningModel(pl.LightningModule):
-    def __init__(self, config:dict, constants_object:ConstantsObject, train_example_count:int, image_shape:tuple) -> None:
+    def __init__(self, config:dict, image_shape:tuple) -> None:
         # lightning information
         super().__init__()
         self.automatic_optimization = True
         # save variables
         self._config = config
-        self._train_example_count = train_example_count
         self._image_shape = image_shape
         # determine things about our loader
         self.graph_style_loader = False
@@ -124,28 +119,25 @@ class LightningModel(pl.LightningModule):
         self._train_acc = CustomMAE()
         self._val_acc = CustomMAE()
         # define the model
-        if(constants_object.EXP_KIND == 'LATENT_FNO'):
+        if(config['EXP_KIND'] == 'LATENT_FNO'):
             self.model = FNO2d(config, self._image_shape)
-        elif(constants_object.EXP_KIND == 'FNO'):
+        elif(config['EXP_KIND'] == 'FNO'):
             self.model = BasicFNO2d(config, self._image_shape)
-        elif(constants_object.EXP_KIND == 'CONV_LSTM'):
+        elif(config['EXP_KIND'] == 'CONV_LSTM'):
             self.model = ConvLSTMModel(config, self._image_shape)
-        elif(constants_object.EXP_KIND == 'AFNO'):
+        elif(config['EXP_KIND'] == 'AFNO'):
             self.model = AFNO(config, self._image_shape)
-        elif(constants_object.EXP_KIND == 'GNO'):
+        elif(config['EXP_KIND'] == 'GNO'):
             self.model = GNO(config, self._image_shape)
-        elif(constants_object.EXP_KIND == 'PERSISTANCE'):
+        elif(config['EXP_KIND'] == 'PERSISTANCE'):
             self.model = PersistanceModel(config, self._image_shape)
-        elif(constants_object.EXP_KIND == 'VIT'):
+        elif(config['EXP_KIND'] == 'VIT'):
             self.model = VIT(config, self._image_shape)
         else:
-            raise Exception(f"{constants_object.EXP_KIND} is not implemented please implement this.")
+            raise Exception(f"{config['EXP_KIND']} is not implemented please implement this.")
 
-    def _print_summary(self, sample_shapes):
-        if(self.graph_style_loader):
-            count_parameters(self.model)
-        else:
-            summary(self.model, sample_shapes)
+    def _print_summary(self):
+        count_parameters(self.model)
 
     def _process_graph_batch(self, batch):
         x, y, grid, edge_index, edge_features = batch[:5]
@@ -223,8 +215,9 @@ class TimingCallback(Callback):
     def _get_average_time_per_epoch(self):
         return self.epoch_total / self.epoch_count
 
-def get_lightning_trainer(config: dict, lightning_logger: WandbLogger = None, accelerator: str = 'auto'):
+def get_lightning_trainer(config: dict, accelerator: str = 'auto'):
     # define the callbacks we want to use
+    lightning_logger = WandbLogger(log_model=False)
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
     early_stopping = EarlyStopping('val/loss', patience=4)
     model_checkpoint_val_loss = ModelCheckpoint(monitor="val/loss", mode="min", filename="Ep{epoch:02d}-val{val/loss:.2f}-best", auto_insert_metric_name=False, verbose=True)
@@ -235,7 +228,7 @@ def get_lightning_trainer(config: dict, lightning_logger: WandbLogger = None, ac
         max_epochs=config['EPOCHS'],
         deterministic=False,
         callbacks=[early_stopping, model_checkpoint_val_loss, lr_monitor, timer_callback],
-        log_every_n_steps=30
+        log_every_n_steps=10
     )
     return trainer, timer_callback
 

@@ -1,6 +1,8 @@
 import numpy as np
 import torch
 
+import wandb
+
 class PDEDataset(torch.utils.data.Dataset):
     def __init__(self, array: np.ndarray, config: dict, dataset_statistics:dict, inference_mode:bool=False):
         super().__init__()
@@ -12,8 +14,8 @@ class PDEDataset(torch.utils.data.Dataset):
         self.inference_mode = inference_mode
         self.array = array.copy().astype(np.float32) # (example, time, x, y)
         self.image_shape = self.array.shape[-2:]
-        self.return_grid = False
-        if("USE_GRID" in config.keys() and config["USE_GRID"] == True):
+        self.return_grid = True
+        if(True):
             self.return_grid = True
             grid_x, grid_y = np.meshgrid(
                 np.linspace(start=0, stop=1.0, num=array.shape[-2]),
@@ -54,7 +56,6 @@ class PDEDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         (exmaple_idx, time_idx) = self.indecies_map[idx]
-        print("getting item ", idx)
         # get the observations
         X = self.array[exmaple_idx, time_idx:time_idx+self.time_steps_in, ...]
         y = self.array[exmaple_idx, time_idx+self.time_steps_in:time_idx+self.time_steps_in+self.time_steps_out, ...]
@@ -65,12 +66,13 @@ class PDEDataset(torch.utils.data.Dataset):
         # reshape the array so that time is last
         X = X.transpose([1, 2, 0])
         y = y.transpose([1, 2, 0])
-        print(X.shape, y.shape)
         if(self.return_grid):
             return X, y, self.grid
         return X, y
 
-def create_data_loader(array: np.ndarray, config: dict, dataset_statistics:dict, shuffle: bool = True, inference_mode:bool=False):
+def create_data_loader(array: np.ndarray, config: dict, dataset_statistics:dict, shuffle: bool = True, inference_mode:bool=False, log_dataset_size:str = None):
     dataset = PDEDataset(array, config, dataset_statistics, inference_mode=inference_mode)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=config['BATCH_SIZE'], shuffle=shuffle, num_workers=4, persistent_workers=True, pin_memory=False)
-    return data_loader, len(dataset), dataset.generate_example_shape(), dataset.image_shape
+    if(log_dataset_size is not None):
+        wandb.log({f'{log_dataset_size}_dataset_size':len(dataset)})
+    return data_loader, dataset.image_shape

@@ -9,6 +9,7 @@ __pycache__/
 **/**.ckpt
 lightning_logs/**
 wandb/
+constants.py
 
 
 # C extensions

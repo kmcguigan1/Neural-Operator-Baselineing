@@ -3,6 +3,8 @@ import torch
 
 from scipy.spatial.distance import cdist
 
+import wandb
+
 class GraphPDEDataset(torch.utils.data.Dataset):
     def __init__(self, array: np.ndarray, config: dict, dataset_statistics:dict, inference_mode:bool=False):
         super().__init__()
@@ -85,10 +87,12 @@ class GraphPDEDataset(torch.utils.data.Dataset):
         # return the data
         return X, y, self.grid, self.edges, self.edge_features
 
-def create_graph_data_loader(array: np.ndarray, config: dict, dataset_statistics:dict, shuffle: bool = True, inference_mode:bool=False):
+def create_graph_data_loader(array: np.ndarray, config: dict, dataset_statistics:dict, shuffle: bool = True, inference_mode:bool=False, log_dataset_size:str = None):
     dataset = GraphPDEDataset(array, config, dataset_statistics, inference_mode=inference_mode)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=config['BATCH_SIZE'], shuffle=shuffle, num_workers=3, persistent_workers=True, pin_memory=False)
-    return data_loader, len(dataset), dataset.generate_example_shape(), (dataset.nx, dataset.ny)
+    if(log_dataset_size is not None):
+        wandb.log({f'{log_dataset_size}_dataset_size':len(dataset)})
+    return data_loader, (dataset.nx, dataset.ny)
 
 def test():
     # Ex, Time, X, Y

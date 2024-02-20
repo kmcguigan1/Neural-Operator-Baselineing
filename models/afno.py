@@ -239,7 +239,6 @@ class AFNO(nn.Module):
         )
         #nn.Linear(self.latent_dims, self.out_dims*self.patch_size[0]*self.patch_size[1], bias=False)
         # get the output activation function
-        self.output_activation = nn.Sigmoid()
         # get the sample input shape
         self._sample_input_shape = (self.in_dims, *self.img_size)
 
@@ -278,5 +277,4 @@ class AFNO(nn.Module):
             f=self.forecast_steps
         )
         x = torch.squeeze(x, axis=1)
-        x = self.output_activation(x)
         return x
