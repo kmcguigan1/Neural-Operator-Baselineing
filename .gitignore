@@ -11,7 +11,8 @@ lightning_logs/**
 wandb/
 constants.py
 
-
+constants.py
+**/**.npz
 # C extensions
 *.so
 
