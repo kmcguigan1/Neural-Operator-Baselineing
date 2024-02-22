@@ -1,17 +1,3 @@
-# run information
-METHODOLOGY: fno
-SEED: 1999
-DATA_FILE: diffusion_varying_sinusoidal_init_varying_diffusivity_periodic_boundaries.npy
-
-# DATA_FILE: heat_sinusoidal_init_varying_diffusivity_periodic_boundaries.npy
-
-# dataloader info
-TIME_STEPS_IN: 7
-TIME_STEPS_OUT: 28
-BATCH_SIZE: 16
-TIME_INT: 1
-USE_GRID: True
-
 # model information
 LATENT_DIMS: 16
 MODES1: 8
@@ -19,15 +5,3 @@ MODES2: 8
 DROP_RATE: 0.2
 MLP_RATIO: 1
 DEPTH: 4
-
-# train information
-EPOCHS: 100
-
-OPTIMIZER: 
-  KIND: adam
-  LEARNING_RATE: 0.001
-
-SCHEDULER:
-  KIND: reducer
-  FACTOR: 0.1
-  PATIENCE: 1

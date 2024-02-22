@@ -1,0 +1,19 @@
+# run information
+SEED: 1999
+# data information
+TIME_STEPS_IN: 7
+TIME_STEPS_OUT: 28
+BATCH_SIZE: 16
+TIME_INT: 1
+NORMALIZATION: None
+# model information
+LOSS: MSE
+# train information
+EPOCHS: 100
+OPTIMIZER: 
+  KIND: adam
+  LEARNING_RATE: 0.01
+SCHEDULER:
+  KIND: reducer
+  FACTOR: 0.1
+  PATIENCE: 1

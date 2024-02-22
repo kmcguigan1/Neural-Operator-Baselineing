@@ -1,15 +1,60 @@
 import gc
 from datetime import datetime
-
 import wandb
-from lightning.pytorch.loggers import WandbLogger
+
 from lightning.pytorch import seed_everything
 
-from data_handling.data_reader import get_train_data_loaders, get_test_data_loaders
-from trainer.trainer import LightningModel, get_lightning_trainer
-from trainer.evaluator import evaluate_model
-from utils.constants_handler import ConstantsObject
-from utils.config_reader import parse_args, display_config_file, load_config, setup_wandb
+from utils.config_reader import parse_args, display_config_file, load_config
+from data_handling.data_module import DataModule
+from trainer.model_module import ModelModule
+from trainer.eval_module import EvalModule
+
+## WAND CONSTANTS
+ENTITY = "kmcguigan"
+PROJECT = "PDE-Operators-Baselines"
+
+def run_experiment(config=None):
+    # setup our wandb run we may choose not to track a run if we want
+    # by using wandb offline or something
+    with wandb.init(config=config, entity=ENTITY, project=PROJECT):
+        # get the configuration
+        if(config == None):
+            config = wandb.config
+        # seed the environment
+        seed_everything(config['SEED'], workers=True)
+        # get the data module object that holds everything to do with the 
+        # data for this experiment
+        data_module = DataModule(config)
+        # get the model module
+        # this module handles the training and things of the model
+        # it should build the model and manage its train and predict calls
+        model_module = ModelModule(config)
+        # now we need to fit the model
+        # this is something that should be handled by the model module
+        model_module.fit(data_module)
+        # after having fit the data module we should evaluate it now
+        # the model doesn't need to know how to evaluate itself
+        # therefore we should use an evaluator module to do this
+        evaluator_module = EvalModule()
+        final_metric = evaluator_module.evaluate(data_module, model_module)
+        # the experiment is complete and everything should be logged
+        # we can now teardown our experiment in order
+        del evaluator_module
+        del model_module
+        del data_module
+        gc.collect()
+        return final_metric
+
+def short_to_file_name(shorthand:str):
+    shorthands = {
+        'burgers_bc_fixed':'burgers_64_x_non_period_y_non_period_fixed_nu.npz',
+        'burgers_bc_vary':'burgers_64_x_non_period_y_non_period_varying_nu.npz',
+        'burgers_vary':'burgers_64_x_period_y_period_varying_nu.npz',
+        'diff_bc_fixed':'diffusion_varying_sinusoidal_init_fixed_diffusivity_non_periodic_boundaries.npz',
+        'diff_bc_vary':'diffusion_varying_sinusoidal_init_varying_diffusivity_non_periodic_boundaries.npz',
+        'diff_vary':'diffusion_varying_sinusoidal_init_varying_diffusivity_periodic_boundaries.npz'
+    }
+    return shorthands[shorthand]
 
 def main():
     # get the args
@@ -17,58 +62,15 @@ def main():
     print("=========PROGRAM ARGS===========")
     print(args)
     print("========================================")
-    # get the constants to use for this run
-    constants_object = ConstantsObject(args.exp_kind)
-    config = load_config(constants_object, experiment_name=args.exp_name)
-    if("NORMALIZER" not in config.keys()):
-        config['NORMALIZER'] = None
+    # load the config object
+    config = load_config(args.exp_kind, args.exp_name)
     # add the experiment name to the config file
     config['EXP_NAME'] = args.exp_name
     config['EXP_KIND'] = args.exp_kind
-    # seed the env
-    seed_everything(config['SEED'], workers=True)
-    # get the wandb stuff
-    lightning_logger, run_name = setup_wandb(args, config, constants_object)
-    config['RUN_NAME'] = run_name
-    display_config_file(config)
-    # get the dataloaders
-    (
-        train_data_loader,
-        val_data_loader, 
-        train_example_count, 
-        train_example_shape, 
-        img_size,
-        dataset_statistics
-    ) = get_train_data_loaders(config, constants_object)
-    # get the model
-    print("Image Size: ", img_size)
-    model = LightningModel(config, constants_object, train_example_count, img_size)
-    if(constants_object.EXP_KIND != 'PERSISTANCE'):
-        model._print_summary(train_example_shape)
-    # get and fit the trainer
-    trainer, timer_callback = get_lightning_trainer(config, lightning_logger=lightning_logger, accelerator=constants_object.ACCELERATOR)
-    if(constants_object.EXP_KIND == 'PERSISTANCE'):
-        average_time_per_epoch = 0
-        total_epochs = 0
-    else:
-        trainer.fit(model=model, train_dataloaders=train_data_loader, val_dataloaders=val_data_loader)
-        average_time_per_epoch = timer_callback._get_average_time_per_epoch()
-        total_epochs = timer_callback.epoch_count
-    # evaluate the model on all datasets
-    if(args.run_wandb):
-        wandb.log({'average_time_per_epoch':average_time_per_epoch, 'total_epochs':total_epochs})
-    # delete the training loaders and move to the testing ones
-    del train_data_loader
-    del val_data_loader
-    gc.collect()
-    (
-        train_set_eval_data_loader,
-        val_set_eval_data_loader,
-        test_set_eval_data_loader
-    ) = get_test_data_loaders(config, constants_object, dataset_statistics)
-    evaluate_model(config, trainer, model, train_set_eval_data_loader, 'train', dataset_statistics, use_wandb=args.run_wandb)
-    evaluate_model(config, trainer, model, val_set_eval_data_loader, 'val', dataset_statistics, use_wandb=args.run_wandb)
-    evaluate_model(config, trainer, model, test_set_eval_data_loader, 'test', dataset_statistics, use_wandb=args.run_wandb)
+    # get the data file
+    config['DATA_FILE'] = short_to_file_name(args.data_file)
+    # run the experiment
+    run_experiment(config=config)
 
 if __name__ == '__main__':
     main()

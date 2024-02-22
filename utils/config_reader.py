@@ -3,16 +3,7 @@ import yaml
 import argparse
 import numpy as np 
 
-from datetime import datetime
-import wandb
-
-from lightning.pytorch.loggers import WandbLogger
-
-from utils.constants_handler import ConstantsObject
-
-## WAND CONSTANTS
-ENTITY = "kmcguigan"
-PROJECT = "PDE-Operators-Baselines"
+from constants import CONFIG_PATH
 
 def fix_config_info(config: dict):
     # fix the None or bools
@@ -30,21 +21,19 @@ def display_config_file(config: dict):
     for k, v in config.items():
         print(f"{k} -> {v}")
 
-def load_config(constants_object:ConstantsObject, experiment_name: str = None):
+def load_config(exp_kind:str, exp_name:str):
     # pull the base config path
-    with open(constants_object.BASE_CONFIG_PATH, mode='r') as config_file:
+    with open(os.path.join(CONFIG_PATH, 'base.yml'), 'r') as config_file:
         config = yaml.safe_load(config_file)
-    # check if the experiment config option is none
-    if(experiment_name is None or experiment_name == 'None'):
-        # fix some of the things in the config
-        config = fix_config_info(config)
-        return config
-    # pull the experiment config
-    experiment_file = os.path.join(constants_object.CONFIG_PATH, experiment_name)
-    with open(experiment_file, mode='r') as experiment_config_file:
-        experiment_config = yaml.safe_load(experiment_config_file)
-    # update the config
-    config.update(experiment_config)
+    with open(os.path.join(CONFIG_PATH, exp_kind, 'base.yml'), mode='r') as base_config_file:
+        base_config = yaml.safe_load(base_config_file)
+    config.update(base_config)
+    # check if the experiment config option is valid and we add that
+    if(exp_name is not None and exp_name != 'None'):
+        with open(os.path.join(CONFIG_PATH, exp_kind, 'experiments', exp_name), mode='r') as experiment_config_file:
+            experiment_config = yaml.safe_load(experiment_config_file)
+        # update the config
+        config.update(experiment_config)
     # fix some of the things in the config
     config = fix_config_info(config)
     return config
@@ -57,17 +46,9 @@ def parse_args():
     parser.add_argument('--exp-kind', default='LATENT_FNO', choices=['LATENT_FNO','FNO','CONV_LSTM','AFNO','PERSISTANCE','GNO','VIT'], help='Kind of expierment to be run.')
     parser.add_argument('--exp-name', default=None, type=str, help='Name of the experiment config to use.')
     parser.add_argument('--run-wandb', action=argparse.BooleanOptionalAction, help='Should wandb be run.')
+    parser.add_argument('--data-file', default='burgers_bc_fixed', type=str, help='Shorthand of the datafile to use.', choices=[
+        'burgers_bc_fixed','burgers_bc_vary','burgers_vary',
+        'diff_bc_fixed','diff_bc_vary','diff_vary'
+    ])
     args = parser.parse_args()
     return args
-
-def setup_wandb(args, config: dict, constant_objects: ConstantsObject):
-    # login and setup wandb
-    if(args.run_wandb):
-        wandb.login(key=constant_objects.WANDB_KEY)
-        lightning_logger = WandbLogger(project=PROJECT, group=config['METHODOLOGY'], log_model=False)
-        lightning_logger.log_hyperparams(config)
-        run_name = wandb.run.name
-    else:
-        lightning_logger = None
-        run_name = datetime.today().strftime("%Y-%m-%d-%H-%M-%S")
-    return lightning_logger, run_name

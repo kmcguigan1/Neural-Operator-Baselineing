@@ -10,6 +10,9 @@ __pycache__/
 lightning_logs/**
 wandb/
 
+constants.py
+**/**.npz
+
 
 # C extensions
 *.so
