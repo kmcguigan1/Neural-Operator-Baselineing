@@ -1,4 +1,3 @@
-import time
 import numpy as np
 import wandb
 
@@ -6,13 +5,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torchmetrics import Metric
 from torch.nn import MSELoss
 
 import lightning.pytorch as pl
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import Callback, EarlyStopping, ModelCheckpoint, LearningRateMonitor, RichProgressBar, TQDMProgressBar, ProgressBar
 
+from trainer.losses_and_metrics import GausInstNorm, RangeInstNorm, PassInstNorm, CustomMAE, LpLoss, TimingCallback
 from data_handling.data_module import DataModule
 from constants import ACCELERATOR
 
@@ -24,56 +23,20 @@ from models.gno import GNO
 from models.persistance import PersistanceModel
 from models.vit import VIT
 
-EPSILON = 1e-6
-
-# class GausNorm(nn.Module):
-#     def __init__(self):
-#         self.means = torch.mean(x, dim=(1,2,3), keepdim=True)
-#         self.stds = torch.std(x, dim=(1,2,3), keepdim=True) + EPSILON
-#     def forward(self, x, y, inference:bool=False):
-#         x = (x - means) / stds
-#         if(not inference):
-#             y = (y - means) / stds
-#         return x, y
-#     def inverse(self, x, preds):
-#         pass
-
-# class RangeNorm(nn.Module):
-#     def __init__(self):
-#         self.mins = None 
-#         self.maxs = None
-#     def forward(self, x, y):
-#         x = (x - means) / stds
-#         if(not inference):
-#             y = (y - means) / stds
-#         return x, y, (means, stds)
-#     def inverse(self, x, preds):
-#         pass
-
-# class PassNorm(nn.Module):
-#     def __init__(self):
-#         pass
-#     def forward(self, x, y):
-#         return x, y
-#     def inverse(self, x, preds):
-#         return x, preds
-
 class BaseModel(nn.Module):
-    def __init__(self, config:dict):
+    def __init__(self, config:dict, image_shape:tuple):
         super().__init__()
-        # get the normalization kind
-        self.instance_normalization = None
-        if(config['NORMALIZATION'] is not None and 'inst' in config['NORMALIZATION']):
-            self.instance_normalization = config['NORMALIZATION']
+        # get the norm layer
+        self.norm_layer = self._setup_norm_layer(config)
         # get the model
         if(config['EXP_KIND'] == 'LATENT_FNO'):
             self.model = FNO2d(config)
         elif(config['EXP_KIND'] == 'FNO'):
             self.model = BasicFNO2d(config)
         elif(config['EXP_KIND'] == 'CONV_LSTM'):
-            self.model = ConvLSTMModel(config)
+            self.model = ConvLSTMModel(config, image_shape)
         elif(config['EXP_KIND'] == 'AFNO'):
-            self.model = AFNO(config)
+            self.model = AFNO(config, image_shape)
         elif(config['EXP_KIND'] == 'GNO'):
             self.model = GNO(config)
         elif(config['EXP_KIND'] == 'PERSISTANCE'):
@@ -83,157 +46,70 @@ class BaseModel(nn.Module):
         else:
             raise Exception(f"{config['EXP_KIND']} is not implemented please implement this.")
 
-    def gaussian_norm(self, x, y, inference:bool=False):
-        means = torch.mean(x, dim=(1,2,3), keepdim=True)
-        stds = torch.std(x, dim=(1,2,3), keepdim=True) + EPSILON
-        x = (x - means) / stds
-        if(not inference):
-            y = (y - means) / stds
-        return x, y, (means, stds)
+    def _setup_norm_layer(self, config:dict):
+        return self._get_norm_layer_with_dims(config)
 
-    def inv_gaussian_norm(self, x, preds, means, stds):
-        x = x * stds + means
-        preds = preds * stds + means
-        return x, preds
-
-    def range_norm(self, x, y, inference:bool=False):
-        mins = torch.minimum(x, dim=(1,2,3), keepdim=True)
-        maxs = torch.maximum(x, dim=(1,2,3), keepdim=True)
-        x = (x - mins) / (maxs - mins)
-        if(not inference):
-            y = (y - mins) / (maxs - mins)
-        return x, y, (mins, maxs)
-
-    def inv_range_norm(self, x, preds, mins, maxs):
-        x = x * (maxs - mins) + mins
-        preds = preds * (maxs - mins) + mins
-        return x, preds
+    def _get_norm_layer_with_dims(self, config:dict, dims:tuple=(1,2,3)):
+        # get the normalization kind
+        if(config['NORMALIZATION'] is None or 'inst' not in config['NORMALIZATION']):
+            norm_layer = PassInstNorm()
+        elif(config['NORMALIZATION'] == 'gaus_inst'):
+            norm_layer = GausInstNorm(dims=dims)
+        elif(config['NORMALIZATION'] == 'range_inst'):
+            norm_layer = RangeInstNorm(dims=dims)
+        else:
+            raise Exception(f"Inst Normalization {config['NORMALIZATION']} has not been implemented yet")
+        return norm_layer
 
     def forward(self, batch, inference:bool=False):
+        # load in the data
         x, y, grid = batch
-        B, H, W, C = x.shape
-        if(self.instance_normalization == 'gaus_inst'):
-            means = torch.mean(x, dim=(1,2,3), keepdim=True)
-            stds = torch.std(x, dim=(1,2,3), keepdim=True) + EPSILON
-            x = (x - means) / stds
-            if(not inference):
-                y = (y - means) / stds
-        elif(self.instance_normalization == 'range_inst'):
-            mins = torch.minimum(x, dim=(1,2,3), keepdim=True)
-            maxs = torch.maximum(x, dim=(1,2,3), keepdim=True)
-            x = (x - mins) / (maxs - mins)
-            if(not inference):
-                y = (y - mins) / (maxs - mins)
-
+        # apply the instance norm layer
+        x, info = self.norm_layer.forward(x)
+        # run the model with the other info
         preds = self.model(x, grid)
-
+        # undo the transform
+        preds = self.norm_layer.inverse(preds, info)
         if(inference):
-            if(self.instance_normalization == 'gaus_inst'):
-                x = x * stds + means
-                preds = preds * stds + means
-            elif(self.instance_normalization == 'range_inst'):
-                x = x * (maxs - mins) + mins
-                preds = preds * (maxs - mins) + mins
-            
+            x = self.norm_layer.inverse(x, info)
             return x, y, preds
         return y, preds
-# class BaseModel(nn.Module):
-#     def __init__(self, config:dict):
-#         super().__init__()
-#         # get the normalization kind
-#         if('inst' in config['NORMALIZATION']):
-#             self.instance_normalization = config['NORMALIZATION']
-#         # get the model
-#         if(config['EXP_KIND'] == 'LATENT_FNO'):
-#             self.model = FNO2d(config)
-#         elif(config['EXP_KIND'] == 'FNO'):
-#             self.model = BasicFNO2d(config)
-#         elif(config['EXP_KIND'] == 'CONV_LSTM'):
-#             self.model = ConvLSTMModel(config)
-#         elif(config['EXP_KIND'] == 'AFNO'):
-#             self.model = AFNO(config)
-#         elif(config['EXP_KIND'] == 'GNO'):
-#             self.model = GNO(config)
-#         elif(config['EXP_KIND'] == 'PERSISTANCE'):
-#             self.model = PersistanceModel(config)
-#         elif(config['EXP_KIND'] == 'VIT'):
-#             self.model = VIT(config)
-#         else:
-#             raise Exception(f"{config['EXP_KIND']} is not implemented please implement this.")
 
-#     def forward(self, batch, inference:bool=False):
-#         x, y, grid = batch
-#         preds = self.model(x, grid)
-#         if(inference):
-#             return x, y, preds
-#         return y, preds
+class GraphBaseModel(BaseModel):
+    def __init__(self, config:dict, image_shape:tuple):
+        super().__init__(config, image_shape)
 
-class CustomMAE(Metric):
-    def __init__(self):
-        super().__init__()
-        self.add_state("error", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("total", default=torch.tensor(0.0), dist_reduce_fx="sum")
-    def update(self, pred: torch.Tensor, target: torch.Tensor):
-        assert pred.shape == target.shape
-        self.error += torch.sum(torch.abs(torch.subtract(pred, target)))
-        self.total += target.numel()
-    def compute(self):
-        return self.error.float() / self.total
+    def _setup_norm_layer(self, config:dict):
+        return self._get_norm_layer_with_dims(config, dims=(1,2))
 
-class LpLoss(object):
-    def __init__(self, d=2, p=2, size_average=False, reduction=True):
-        super(LpLoss, self).__init__()
-
-        #Dimension and Lp-norm type are postive
-        assert d > 0 and p > 0
-
-        self.d = d
-        self.p = p
-        self.reduction = reduction
-        self.size_average = size_average
-
-    def abs(self, x, y):
-        num_examples = x.size()[0]
-
-        #Assume uniform mesh
-        h = 1.0 / (x.size()[1] - 1.0)
-
-        all_norms = (h**(self.d/self.p))*torch.norm(x.view(num_examples,-1) - y.view(num_examples,-1), self.p, 1)
-
-        if self.reduction:
-            if self.size_average:
-                return torch.mean(all_norms)
-            else:
-                return torch.sum(all_norms)
-
-        return all_norms
-
-    def rel(self, x, y):
-        num_examples = x.size()[0]
-
-        diff_norms = torch.norm(x.reshape(num_examples,-1) - y.reshape(num_examples,-1), self.p, 1)
-        y_norms = torch.norm(y.reshape(num_examples,-1), self.p, 1)
-
-        if self.reduction:
-            if self.size_average:
-                return torch.mean(diff_norms/y_norms)
-            else:
-                return torch.sum(diff_norms/y_norms)
-
-        return diff_norms/y_norms
-
-    def __call__(self, x, y):
-        return self.rel(x, y)
-
+    def forward(self, batch, inference:bool=False):
+        # load in the data
+        x, y, grid, edge_index, edge_features = batch
+        # apply the instance norm layer
+        x, info = self.norm_layer.forward(x)
+        # run the model with the other info
+        preds = torch.zeros_like(y, device=x.device)
+        for batch_idx in range(x.shape[0]):
+            preds[batch_idx, ...] = self.model(x[batch_idx, ...], grid[batch_idx, ...], edge_index[batch_idx, ...], edge_features[batch_idx, ...])
+        # undo the transform
+        preds = self.norm_layer.inverse(preds, info)
+        if(inference):
+            x = self.norm_layer.inverse(x, info)
+            return x, y, preds
+        return y, preds
 
 class LightningModule(pl.LightningModule):
-    def __init__(self, config:dict):
+    def __init__(self, config:dict, image_shape:tuple):
         super().__init__()
         self.automatic_optimization = True
+        self.leraning_rate = config['LEARNING_RATE']
         self.optimizer_params = config['OPTIMIZER']
         self.scheduler_params = config['SCHEDULER']
         # get the model
-        self.model = BaseModel(config)
+        if('GRAPH_DATA_LOADER' in config.keys() and config['GRAPH_DATA_LOADER'] == True):
+            self.model = GraphBaseModel(config, image_shape)
+        else:
+            self.model = BaseModel(config, image_shape)
         # get the loss and metrics
         if(config['LOSS'] == 'L1NORM'):
             self._loss_fn = LpLoss()
@@ -272,7 +148,7 @@ class LightningModule(pl.LightningModule):
     def configure_optimizers(self):
         # get the optimizer
         if(self.optimizer_params['KIND'] == 'adam'):
-            optimizer = torch.optim.Adam(self.parameters(), lr=self.optimizer_params['LEARNING_RATE'])#, weight_decay=self.optimizer_params['WEIGHT_DECAY'])
+            optimizer = torch.optim.Adam(self.parameters(), lr=self.leraning_rate)#, weight_decay=self.optimizer_params['WEIGHT_DECAY'])
         else:
             raise Exception(f"Invalid optimizer specified of {self.optimizer_params['KIND']}")
         # get the 
@@ -285,30 +161,11 @@ class LightningModule(pl.LightningModule):
         else:
             raise Exception(f"Invalid scheduler specified of {self.scheduler_params['KIND']}")
 
-class TimingCallback(Callback):
-    def __init__(self):
-        super().__init__()
-        self.epoch_start_time = 0
-        self.epoch_total = 0
-        self.epoch_count = 0
-
-    def on_train_epoch_start(self, trainer, pl_module):
-        self.epoch_start_time = time.time()
-
-    def on_train_epoch_end(self, trainer, pl_module):
-        epoch_end_time = time.time()
-        epoch_duration = epoch_end_time - self.epoch_start_time
-        self.epoch_total += epoch_duration
-        self.epoch_count += 1
-
-    def _get_average_time_per_epoch(self):
-        return self.epoch_total / self.epoch_count
-
-
 class ModelModule(object):
     def __init__(self, config:dict):
-        self.lightning_module = LightningModule(config)
-        self.trainer, self.timer = self._setup_trainer(config)
+        self.lightning_module = None
+        self.trainer = None
+        self.time = None
 
     def _setup_trainer(self, config:dict):
         lightning_logger = WandbLogger(log_model=False)
@@ -326,8 +183,16 @@ class ModelModule(object):
         )
         return trainer, timer_callback
 
-    def fit(self, data_module:DataModule):
-        train_loader, val_loader = data_module.get_training_data()
+    def _create_lightning_module(self, config:dict, image_shape:tuple):
+        assert self.lightning_module is None, "attempting to reset lightning module in model module."
+        self.lightning_module = LightningModule(config, image_shape)
+        self.trainer, self.timer = self._setup_trainer(config)
+
+    def fit(self, data_module:DataModule, config:dict):
+        train_loader, val_loader, train_image_shape = data_module.get_training_data()
+        self._create_lightning_module(config, train_image_shape)
+        if(config['EXP_KIND'] == 'PERSISTANCE'):
+            return
         self.trainer.fit(model=self.lightning_module, train_dataloaders=train_loader, val_dataloaders=val_loader)
         average_time_per_epoch = self.timer._get_average_time_per_epoch()
         total_epochs = self.timer.epoch_count
@@ -347,9 +212,9 @@ class ModelModule(object):
         actuals = self.parse_model_outputs(preds, 1)
         last_input = self.parse_model_outputs(preds, 2)
         # inverse the model predictions
-        forecasts = data_module.transform_predictions(forecasts)
-        actuals = data_module.transform_predictions(actuals)
-        last_input = data_module.transform_predictions(last_input)
+        forecasts = data_module.transform_predictions(forecasts, split=split)
+        actuals = data_module.transform_predictions(actuals, split=split)
+        last_input = data_module.transform_predictions(last_input, split=split, no_time_dim=True)
         return forecasts, actuals, last_input
 
 

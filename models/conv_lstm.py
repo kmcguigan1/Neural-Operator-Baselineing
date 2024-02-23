@@ -10,7 +10,6 @@ class ConvLSTMCell(nn.Module):
         self.hidden_dims = hidden_dims
         self.kernel_size = kernel_size
         self.img_shape = img_shape
-        print(self.img_shape)
         # input gate
         self.wxi = nn.Conv2d(self.in_dims, self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=True)
         self.whi = nn.Conv2d(self.hidden_dims, self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=False)
@@ -58,7 +57,6 @@ class ConvLSTMModel(nn.Module):
         # save needed vars
         super().__init__()
         self.img_size = img_size
-        print(self.img_size)
         self.latent_dims = config["LATENT_DIMS"]
         self.input_steps = config["TIME_STEPS_IN"]
         self.forecast_steps = config["TIME_STEPS_OUT"]

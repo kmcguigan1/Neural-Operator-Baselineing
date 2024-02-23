@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class PersistanceModel(nn.Module):
-    def __init__(self, config:dict, img_size:tuple):
+    def __init__(self, config:dict):
         super().__init__()
         self.time_steps_out = config["TIME_STEPS_OUT"]
 

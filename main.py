@@ -5,7 +5,7 @@ import wandb
 from lightning.pytorch import seed_everything
 
 from utils.config_reader import parse_args, display_config_file, load_config
-from data_handling.data_module import DataModule
+from data_handling.data_module import get_data_module, DataModule
 from trainer.model_module import ModelModule
 from trainer.eval_module import EvalModule
 
@@ -24,14 +24,14 @@ def run_experiment(config=None):
         seed_everything(config['SEED'], workers=True)
         # get the data module object that holds everything to do with the 
         # data for this experiment
-        data_module = DataModule(config)
+        data_module = get_data_module(config)
         # get the model module
         # this module handles the training and things of the model
         # it should build the model and manage its train and predict calls
         model_module = ModelModule(config)
         # now we need to fit the model
         # this is something that should be handled by the model module
-        model_module.fit(data_module)
+        model_module.fit(data_module, config)
         # after having fit the data module we should evaluate it now
         # the model doesn't need to know how to evaluate itself
         # therefore we should use an evaluator module to do this

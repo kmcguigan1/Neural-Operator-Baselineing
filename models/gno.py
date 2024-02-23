@@ -45,9 +45,8 @@ class CustomMessagePassing(MessagePassing):
         return F.gelu(self.W(x) + aggr_out)
 
 class GNO(nn.Module):
-    def __init__(self, config:dict, img_size:tuple):
+    def __init__(self, config:dict):
         super().__init__()
-        self.img_size = img_size
         self.latent_dims = config["LATENT_DIMS"]
         self.steps_in = config["TIME_STEPS_IN"]
         self.steps_out = config["TIME_STEPS_OUT"]
@@ -74,8 +73,6 @@ class GNO(nn.Module):
 
         x = self.decode(x)
         return x
-
-
 
 
 def test():
