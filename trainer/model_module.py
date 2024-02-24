@@ -204,8 +204,8 @@ class ModelModule(object):
         ])
         return predictions
 
-    def predict(self, data_module:DataModule, split:str):
-        data_loader = data_module.get_test_data(split=split)
+    def predict(self, data_module:DataModule, split:str, return_metadata:bool=False):
+        data_loader = data_module.get_test_data(split=split, return_metadata=return_metadata)
         preds = self.trainer.predict(self.lightning_module, data_loader)
         # get the forecasts
         forecasts = self.parse_model_outputs(preds, 0)

@@ -81,10 +81,13 @@ class DataModule(object):
         val_loader = self.create_data_loader(val_data, shuffle=False)
         return train_loader, val_loader, train_image_shape
 
-    def get_test_data(self, split:str='test'):
+    def get_test_data(self, split:str='test', return_metadata:bool=False):
         data = self.load_data(split=split)
         if(self.transform is not None):
             data = self.transform.transform(data)
+        datalodaer = self.create_data_loader(data, shuffle=False, split=split)
+        if(return_metadata):
+            return self.create_data_loader(data, shuffle=False, split=split)
         return self.create_data_loader(data, shuffle=False, split=split)
 
     def transform_predictions(self, data:np.array, split:str=None, no_time_dim:bool=False):

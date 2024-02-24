@@ -98,9 +98,11 @@ def run_all_metrics(forecasts:np.array, actuals:np.array, last_input:np.array, s
     calculate_mean_absolute_error(delta_forecasts, delta_actuals, 'delta_actuals_weighted_delta_mean_absolute_error', split_name, weighted_delta=weighted_delta_actuals)
     return mean_abs_error
 
+def save_results()
+
 class EvalModule(object):
-    def evaluate_dataset(self, data_module:DataModule, model:ModelModule, split:str='test'):
-        forecasts, actuals, last_input = model.predict(data_module, split)
+    def evaluate_dataset(self, data_module:DataModule, model:ModelModule, split:str='test', save_results:bool=False):
+        forecasts, actuals, last_input = model.predict(data_module, split, return_metadata=save_results)
         mean_absolute_error = run_all_metrics(forecasts, actuals, last_input, split)
         return mean_absolute_error
 
