@@ -18,8 +18,8 @@ def run_experiment(config=None):
     # by using wandb offline or something
     with wandb.init(config=config, entity=ENTITY, project=PROJECT):
         # get the configuration
-        if(config == None):
-            config = wandb.config
+        config = wandb.config
+        display_config_file(config)
         # seed the environment
         seed_everything(config['SEED'], workers=True)
         # get the data module object that holds everything to do with the 
