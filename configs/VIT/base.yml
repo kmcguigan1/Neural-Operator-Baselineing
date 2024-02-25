@@ -7,9 +7,9 @@ DATA_FILE: diffusion_varying_sinusoidal_init_varying_diffusivity_periodic_bounda
 
 # dataloader info
 TIME_STEPS_IN: 7
-TIME_STEPS_OUT: 28
+TIME_STEPS_OUT: 1
 BATCH_SIZE: 16
-TIME_INT: 1
+TIME_INT: 4
 USE_GRID: True
 
 # model information

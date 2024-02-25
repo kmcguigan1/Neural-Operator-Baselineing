@@ -57,7 +57,7 @@ class PatchEmbed(nn.Module):
         x = self.pos_dropout(x)
         return x
 
-class VITTEMP(nn.Module):
+class VIT(nn.Module):
     def __init__(self, config:dict, img_size:tuple):
         super().__init__()
         # save needed vars
@@ -117,45 +117,6 @@ class VITTEMP(nn.Module):
             w=self.patch_count_y,
             f=self.forecast_steps,
             c_out=1
-        )
-        x = torch.squeeze(x, axis=-1)
-        return x
-
-class VIT(nn.Module):
-    def __init__(self, config:dict, img_size:tuple):
-        super().__init__()
-        # save needed vars
-        self.img_size = img_size
-        self.latent_dims = config["LATENT_DIMS"]
-        self.forecast_steps = config["TIME_STEPS_OUT"]
-        self.patch_size = [config['PATCH_SIZE'], config['PATCH_SIZE']]
-        self.in_dims = config['TIME_STEPS_IN'] + 2
-        self.out_dims = 1
-        # self.mlp_ratio = config['MLP_RATIO']
-        self.depth = config['DEPTH']
-        self.nhead = config["NHEAD"]
-        # dropout information
-        self.drop_rate = config["DROPOUT"]
-        # layer
-        self.layer = nn.Conv2d(self.in_dims, self.out_dims)
-        
-    def forward(self, x, grid):
-        # print(x.shape)
-        x = torch.concatenate((x, grid), dim=-1)
-        B, H, W, C = x.shape
-        x = rearrange(
-            x,
-            "b h w c -> b c h w",
-            b=B, h=H, w=W, c=C
-        )
-        x = self.layer(x)
-        x = rearrange(
-            x,
-            "b c h w -> b h w c",
-            b=B,
-            h=self.patch_count_x,
-            w=self.patch_count_y,
-            c=1
         )
         x = torch.squeeze(x, axis=-1)
         return x
