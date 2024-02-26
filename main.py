@@ -76,6 +76,7 @@ def run_as_sweep(sweep_id:str):
     wandb.agent(f'PDE-Operators-Baselines/{sweep_id}', run_experiment, count=10)
 
 if __name__ == '__main__':
-    run_as_sweep('1vsotuw6')
+    main()
+    # run_as_sweep('1vsotuw6')
 
 

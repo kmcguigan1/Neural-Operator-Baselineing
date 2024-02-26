@@ -94,10 +94,9 @@ class NeuralOperator(nn.Module):
         return x
 
 class FNO2d(nn.Module):
-    def __init__(self, config: dict, img_size: tuple):
+    def __init__(self, config: dict):
         super(FNO2d, self).__init__()
         # save needed vars
-        self.img_size = img_size
         self.latent_dims = config["LATENT_DIMS"]
         self.steps_in = config["TIME_STEPS_IN"]
         self.steps_out = config["TIME_STEPS_OUT"]
