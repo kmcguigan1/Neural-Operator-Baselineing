@@ -6,7 +6,7 @@
 
 #SBATCH --tasks-per-node=1
 
-#SBATCH --cpus-per-task=8 # change this parameter to 2,4,6,... and increase "--num_workers" accordingly to see the effect on performance
+#SBATCH --cpus-per-task=12 # change this parameter to 2,4,6,... and increase "--num_workers" accordingly to see the effect on performance
 
 #SBATCH --mem=32G
 
