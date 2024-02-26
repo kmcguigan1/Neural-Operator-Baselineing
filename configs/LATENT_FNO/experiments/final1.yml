@@ -7,6 +7,6 @@ DEPTH: 2
 LOSS: MSE
 LEARNING_RATE: 0.01
 NORMALIZATION: gaus
-DATAFILE: burgers_64_x_non_period_y_non_period_varying_nu.npz
+DATA_FILE: burgers_64_x_non_period_y_non_period_varying_nu.npz
 ABLATION: True
 SEED: 1234

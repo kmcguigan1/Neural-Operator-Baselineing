@@ -7,5 +7,5 @@ NORMALIZATION: gaus
 LEARNING_REATE: 0.01
 
 ABLATION: True
-DATAFILE: burgers_64_x_non_period_y_non_period_varying_nu.npz
+DATA_FILE: burgers_64_x_non_period_y_non_period_varying_nu.npz
 SEED: 8963
