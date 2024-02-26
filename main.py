@@ -68,7 +68,7 @@ def main():
     config['EXP_NAME'] = args.exp_name
     config['EXP_KIND'] = args.exp_kind
     # get the data file
-    config['DATA_FILE'] = short_to_file_name(args.data_file)
+    # config['DATA_FILE'] = short_to_file_name(args.data_file)
     # run the experiment
     run_experiment(config=config)
 

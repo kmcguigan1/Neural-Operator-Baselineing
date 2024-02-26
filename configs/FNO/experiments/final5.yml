@@ -1,11 +1,13 @@
 LATENT_DIMS: 64
-MODES1: 16
-MODES2: 16
-DROP_RATE: 0.2
+MODES1: 8
+MODES2: 12
+DROP_RATE: 0.4
 MLP_RATIO: 1
-DEPTH: 4
+DEPTH: 2
+LOSS: L1NORM
+NORMALIZATION: gaus
+LEARNING_RATE: 0.001
 
 ABLATION: True
+DATA_FILE: burgers_64_x_non_period_y_non_period_varying_nu.npz
 SEED: 2582
-
-DATA_FILE: basic_heat_dataset.npy
