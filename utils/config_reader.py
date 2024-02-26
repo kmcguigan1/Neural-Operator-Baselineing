@@ -46,7 +46,7 @@ def parse_args():
     parser.add_argument('--exp-kind', default='LATENT_FNO', choices=['LATENT_FNO','FNO','CONV_LSTM','AFNO','PERSISTANCE','GNO','VIT'], help='Kind of expierment to be run.')
     parser.add_argument('--exp-name', default=None, type=str, help='Name of the experiment config to use.')
     parser.add_argument('--run-wandb', action=argparse.BooleanOptionalAction, help='Should wandb be run.')
-    parser.add_argument('--data-file', default='burgers_bc_fixed', type=str, help='Shorthand of the datafile to use.', choices=[
+    parser.add_argument('--data-file', default='burgers_vary', type=str, help='Shorthand of the datafile to use.', choices=[
         'burgers_bc_fixed','burgers_bc_vary','burgers_vary',
         'diff_bc_fixed','diff_bc_vary','diff_vary'
     ])

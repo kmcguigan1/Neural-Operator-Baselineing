@@ -50,9 +50,14 @@ class DataModule(object):
         return array
             
     def load_data(self, split:str='train'):
-        file_data = np.load(self.data_file)
-        array = file_data[f'{split}_data']
+        with np.load(self.data_file) as file_data:
+            array = file_data[f'{split}_data']
         array = self.cut_data(array)
+        return array
+
+    def load_meta(self, split:str='train'):
+        with np.load(self.data_file) as file_data:
+            array = file_data[f'{split}_meta']
         return array
 
     def _create_dataset(self, data:np.array):
@@ -60,7 +65,7 @@ class DataModule(object):
 
     def create_data_loader(self, data:np.array, shuffle:bool=True, split:str=None, get_image_shape:bool=False):
         dataset = self._create_dataset(data)
-        data_loader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=shuffle, num_workers=4, persistent_workers=True, pin_memory=False)
+        data_loader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=shuffle, num_workers=3, persistent_workers=True, pin_memory=False)
         # save the split if we need it
         if(split is not None):
             self.image_sizes[split] = dataset.image_shape
@@ -87,7 +92,7 @@ class DataModule(object):
             data = self.transform.transform(data)
         datalodaer = self.create_data_loader(data, shuffle=False, split=split)
         if(return_metadata):
-            return self.create_data_loader(data, shuffle=False, split=split)
+            return self.create_data_loader(data, shuffle=False, split=split), self.load_meta(split=split)
         return self.create_data_loader(data, shuffle=False, split=split)
 
     def transform_predictions(self, data:np.array, split:str=None, no_time_dim:bool=False):

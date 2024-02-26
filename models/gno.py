@@ -26,11 +26,21 @@ class MLP(nn.Module):
         return x
 
 class CustomMessagePassing(MessagePassing):
-    def __init__(self, node_features:int, edge_features:int, mlp_ratio:int=1):
+    def __init__(self, node_features:int, edge_features:int, mlp_ratio:int=1, output_mlp:str='none'):
         super().__init__(aggr='add')
-        self.W = MLP(node_features, node_features)
+        self.W = MLP(node_features, node_features, mid_dims=node_features*mlp_ratio)
         self.K = MLP(node_features * 2 + edge_features, node_features)
-
+        if(output_mlp == 'none'):
+            self.mode = 'none'
+        elif(output_mlp == 'add'):
+            self.mode = 'add'
+            self.O = MLP(node_features, node_features)
+        elif(output_mlp == 'concat'):
+            self.mode = 'concat'
+            self.O = MLP(node_features*2, node_features)
+        else:
+            raise Exception(f'Invalid output mlp mode {output_mlp}')
+    
     def forward(self, x, edge_index, edge_features):
         x = self.propagate(edge_index, x=x, edge_features=edge_features)
         return x
@@ -42,7 +52,14 @@ class CustomMessagePassing(MessagePassing):
         return self.K(edge_features)
 
     def update(self, aggr_out, x):
-        return F.gelu(self.W(x) + aggr_out)
+        if(self.mode == 'none'):
+            return F.gelu(self.W(x) + aggr_out)
+        elif(self.mode == 'add'):
+            return F.gelu(self.O(self.W(x) + aggr_out))
+        elif(self.mode == 'concat'):
+            return F.gelu(self.O(torch.concatenate((self.W(x), aggr_out), dim=-1)))
+        else:
+            raise Exception('')
 
 class GNO(nn.Module):
     def __init__(self, config:dict):
@@ -53,6 +70,7 @@ class GNO(nn.Module):
         self.in_dims = self.steps_in + 2
         self.mlp_ratio = config['MLP_RATIO']
         self.depth = config['DEPTH']
+        self.output_mode = config['OUTPUT_MODE']
         # dropout information
         self.drop_rate = config["DROP_RATE"]
         # setup layers
@@ -60,7 +78,7 @@ class GNO(nn.Module):
         self.decode = MLP(config['LATENT_DIMS'], 1, config['LATENT_DIMS'] * self.mlp_ratio)
         # create the graph layers
         self.blocks = nn.ModuleList([
-            CustomMessagePassing(self.latent_dims, 5, mlp_ratio=self.mlp_ratio)
+            CustomMessagePassing(self.latent_dims, 5, mlp_ratio=self.mlp_ratio, output_mlp=self.output_mode)
         ])
 
     def forward(self, x, grid, edge_index, edge_features):

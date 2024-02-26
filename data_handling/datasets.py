@@ -79,7 +79,7 @@ class GraphPDEDataset(torch.utils.data.Dataset):
             self.edge_features,
             self.grid[connections[0], :],
             self.grid[connections[1], :] 
-        ), axis=-1)
+        ), axis=-1).astype(np.float32)
         # generate the indecies for where we can take samples from
         self.indecies_map = []
         for example_idx in range(self.array.shape[0]):

@@ -98,13 +98,23 @@ def run_all_metrics(forecasts:np.array, actuals:np.array, last_input:np.array, s
     calculate_mean_absolute_error(delta_forecasts, delta_actuals, 'delta_actuals_weighted_delta_mean_absolute_error', split_name, weighted_delta=weighted_delta_actuals)
     return mean_abs_error
 
-#def save_results()
-
 class EvalModule(object):
-    def evaluate_dataset(self, data_module:DataModule, model:ModelModule, split:str='test', save_results:bool=False):
-        forecasts, actuals, last_input = model.predict(data_module, split, return_metadata=save_results)
+    def evaluate_dataset(self, data_module:DataModule, model:ModelModule, split:str='test'):
+        forecasts, actuals, last_input = model.predict(data_module, split)
         mean_absolute_error = run_all_metrics(forecasts, actuals, last_input, split)
         return mean_absolute_error
+
+    def save_results(self, data_module:DataModule, model:ModelModule, split:str='test'):
+        forecasts, actuals, last_input, metadata = model.predict(data_module, split, return_metadata=True)
+        os.makedirs('results', exist_ok=True)
+        save_name = f'{wandb.run.name}-{split}-results.npz'
+        np.savez(
+            os.path.join('results',save_name),
+            forecasts=forecasts,
+            actuals=actuals,
+            last_input=last_input,
+            metadata=metadata,
+        )
 
     def evaluate(self, data_module:DataModule, model:ModelModule):
         for split in ['train', 'val', 'test']:
