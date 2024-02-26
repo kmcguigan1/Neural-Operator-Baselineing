@@ -1,0 +1,10 @@
+DEPTH: 2
+DROPOUT: 0.0
+LATENT_DIMS: 16
+NHEAD: 1
+NORMALIZATION: gaus
+LOSS: L1NORM
+PATCH_SIZE: 3
+DATA_FILE: burgers_64_x_non_period_y_non_period_varying_nu.npz
+ABLATION: True
+SEED: 2587
