@@ -38,11 +38,10 @@ echo "starting program"
 
 expKind=${1:-None}
 expName=${2:-None}
+dataFile=${3:-None}
 echo "experiment kind $expKind"
 echo "experiment name $expName"
 
-wandb offline
-echo "Running wandb offline"
 python main.py --exp-kind=$expKind --exp-name=$expName --run-wandb
 
 echo "Finished running"
