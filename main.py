@@ -37,11 +37,13 @@ def run_experiment(config=None):
         # therefore we should use an evaluator module to do this
         evaluator_module = EvalModule()
         final_metric = evaluator_module.evaluate(data_module, model_module)
+        if('SAVE_PREDS' in config.keys() and config['SAVE_PREDS'] == True):
+            evaluator_module.save_results(data_module, model_module, split='test')
         # the experiment is complete and everything should be logged
         # we can now teardown our experiment in order
-        del evaluator_module
-        del model_module
-        del data_module
+        # del evaluator_module
+        # del model_module
+        # del data_module
         gc.collect()
         return final_metric
 
@@ -73,10 +75,10 @@ def main():
     run_experiment(config=config)
 
 def run_as_sweep(sweep_id:str):
-    wandb.agent(f'PDE-Operators-Baselines/{sweep_id}', run_experiment, count=10)
+    wandb.agent(f'PDE-Operators-Baselines/{sweep_id}', run_experiment, count=15)
 
 if __name__ == '__main__':
-    main()
-    # run_as_sweep('1vsotuw6')
+    # main()
+    run_as_sweep('c7vp9fvs')
 
 

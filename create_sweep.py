@@ -3,7 +3,7 @@ import wandb
 
 BASE_PARAMETERS = {
     'SEED': {'value': 1999},
-    'DATA_FILE': {'value': 'burgers_64_x_period_y_period_varying_nu.npz'},
+    'DATA_FILE': {'value': 'burgers_64_x_non_period_y_non_period_varying_nu.npz'},
     'TIME_STEPS_IN': {'value': 7},
     'TIME_STEPS_OUT': {'value': 28},
     'BATCH_SIZE': {'value': 16},
@@ -35,7 +35,7 @@ GNO_PARAMETERS = {
         'values': [1, 2]
     },
     'DEPTH': {
-        'values': [2, 4, 6]
+        'values': [4, 6, 8]
     },
     'NORMALIZATION': {
         'values': [None, 'gaus', 'range']

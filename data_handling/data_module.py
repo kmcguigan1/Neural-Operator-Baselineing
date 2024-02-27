@@ -1,4 +1,5 @@
 import os
+from copy import copy
 import numpy as np 
 import torch
 
@@ -7,6 +8,8 @@ from einops import rearrange
 from constants import DATA_PATH
 from data_handling.datasets import PDEDataset, GraphPDEDataset
 from data_handling.transforms import GausNorm, RangeNorm, DataTransform
+
+SAVING_TIME_INT = 4
 
 class DataModule(object):
     def __init__(self, config:dict):
@@ -60,11 +63,13 @@ class DataModule(object):
             array = file_data[f'{split}_meta']
         return array
 
-    def _create_dataset(self, data:np.array):
+    def _create_dataset(self, data:np.array, get_info_to_save:bool=False):
+        if(get_info_to_save):
+            return PDEDataset(data, self.time_steps_in, self.time_steps_out, SAVING_TIME_INT)
         return PDEDataset(data, self.time_steps_in, self.time_steps_out, self.time_int)
 
-    def create_data_loader(self, data:np.array, shuffle:bool=True, split:str=None, get_image_shape:bool=False):
-        dataset = self._create_dataset(data)
+    def create_data_loader(self, data:np.array, shuffle:bool=True, split:str=None, get_image_shape:bool=False, get_info_to_save:bool=False):
+        dataset = self._create_dataset(data, get_info_to_save=get_info_to_save)
         data_loader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=shuffle, num_workers=3, persistent_workers=True, pin_memory=False)
         # save the split if we need it
         if(split is not None):
@@ -90,9 +95,9 @@ class DataModule(object):
         data = self.load_data(split=split)
         if(self.transform is not None):
             data = self.transform.transform(data)
-        datalodaer = self.create_data_loader(data, shuffle=False, split=split)
         if(return_metadata):
-            return self.create_data_loader(data, shuffle=False, split=split), self.load_meta(split=split)
+            data_loader, indecies = self.create_data_loader(data, shuffle=False, split=split, get_info_to_save=True)
+            return data_loader, indecies, self.load_meta(split=split)
         return self.create_data_loader(data, shuffle=False, split=split)
 
     def transform_predictions(self, data:np.array, split:str=None, no_time_dim:bool=False):
@@ -106,6 +111,8 @@ class GraphDataModule(DataModule):
         self.neighbors_method = config['NEIGHBORS']
 
     def _create_dataset(self, data:np.array):
+        if(get_info_to_save):
+            return GraphPDEDataset(data, self.time_steps_in, self.time_steps_out, SAVING_TIME_INT, self.neighbors_method)
         return GraphPDEDataset(data, self.time_steps_in, self.time_steps_out, self.time_int, self.neighbors_method)
 
     def transform_predictions(self, data:np.array, split:str=None, no_time_dim:bool=False):

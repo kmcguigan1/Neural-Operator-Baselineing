@@ -29,15 +29,15 @@ class CustomMessagePassing(MessagePassing):
     def __init__(self, node_features:int, edge_features:int, mlp_ratio:int=1, output_mlp:str='none'):
         super().__init__(aggr='add')
         self.W = MLP(node_features, node_features, mid_dims=node_features*mlp_ratio)
-        self.K = MLP(node_features * 2 + edge_features, node_features)
+        self.K = MLP(node_features * 2 + edge_features, node_features, mid_dims=node_features)
         if(output_mlp == 'none'):
             self.mode = 'none'
         elif(output_mlp == 'add'):
             self.mode = 'add'
-            self.O = MLP(node_features, node_features)
+            self.O = MLP(node_features, node_features, mid_dims=node_features*mlp_ratio)
         elif(output_mlp == 'concat'):
             self.mode = 'concat'
-            self.O = MLP(node_features*2, node_features)
+            self.O = MLP(node_features*2, node_features, mid_dims=node_features*mlp_ratio)
         else:
             raise Exception(f'Invalid output mlp mode {output_mlp}')
     

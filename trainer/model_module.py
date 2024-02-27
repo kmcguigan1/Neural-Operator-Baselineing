@@ -206,7 +206,7 @@ class ModelModule(object):
 
     def predict(self, data_module:DataModule, split:str, return_metadata:bool=False):
         if(return_metadata):
-            data_loader, metadata = data_module.get_test_data(split=split, return_metadata=True)
+            data_loader, indecies, metadata = data_module.get_test_data(split=split, return_metadata=True)
         else:
             data_loader = data_module.get_test_data(split=split)
         preds = self.trainer.predict(self.lightning_module, data_loader)
@@ -219,7 +219,7 @@ class ModelModule(object):
         actuals = data_module.transform_predictions(actuals, split=split)
         last_input = data_module.transform_predictions(last_input, split=split, no_time_dim=True)
         if(return_metadata):
-            return forecasts, actuals, last_input, metadata
+            return forecasts, actuals, last_input, metadata, indecies
         return forecasts, actuals, last_input
 
 
