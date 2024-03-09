@@ -58,11 +58,6 @@ class DataModule(object):
         array = self.cut_data(array)
         return array
 
-    def load_meta(self, split:str='train'):
-        with np.load(self.data_file) as file_data:
-            array = file_data[f'{split}_meta']
-        return array
-
     def _create_dataset(self, data:np.array, get_info_to_save:bool=False):
         if(get_info_to_save):
             return PDEDataset(data, self.time_steps_in, self.time_steps_out, SAVING_TIME_INT)
