@@ -74,6 +74,9 @@ class DataModule(object):
         # save the split if we need it
         if(split is not None):
             self.image_sizes[split] = dataset.image_shape
+        # see if we are returning meta information about the indecies from the dataset
+        if(get_info_to_save):
+            return data_loader, dataset.indecies_map
         # see if we get the image shape too
         if(get_image_shape):
             return data_loader, dataset.image_shape
@@ -110,7 +113,7 @@ class GraphDataModule(DataModule):
         super().__init__(config)
         self.neighbors_method = config['NEIGHBORS']
 
-    def _create_dataset(self, data:np.array):
+    def _create_dataset(self, data:np.array, get_info_to_save:bool=False):
         if(get_info_to_save):
             return GraphPDEDataset(data, self.time_steps_in, self.time_steps_out, SAVING_TIME_INT, self.neighbors_method)
         return GraphPDEDataset(data, self.time_steps_in, self.time_steps_out, self.time_int, self.neighbors_method)

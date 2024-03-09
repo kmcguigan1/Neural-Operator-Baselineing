@@ -70,7 +70,7 @@ class GNO(nn.Module):
         self.in_dims = self.steps_in + 2
         self.mlp_ratio = config['MLP_RATIO']
         self.depth = config['DEPTH']
-        self.output_mode = config['OUTPUT_MODE']
+        self.output_mode = config['OUTPUT_MODE'] if 'OUTPUT_MODE' in config.keys() else 'none'
         # dropout information
         self.drop_rate = config["DROP_RATE"]
         # setup layers

@@ -38,7 +38,7 @@ def run_experiment(config=None):
         evaluator_module = EvalModule()
         final_metric = evaluator_module.evaluate(data_module, model_module)
         if('SAVE_PREDS' in config.keys() and config['SAVE_PREDS'] == True):
-            evaluator_module.save_results(data_module, model_module, split='test')
+            evaluator_module.save_results(config['DATA_FILE'], data_module, model_module, split='test')
         # the experiment is complete and everything should be logged
         # we can now teardown our experiment in order
         # del evaluator_module
@@ -69,6 +69,7 @@ def main():
     # add the experiment name to the config file
     config['EXP_NAME'] = args.exp_name
     config['EXP_KIND'] = args.exp_kind
+    config['SAVE_PREDS'] = True
     # get the data file
     # config['DATA_FILE'] = short_to_file_name(args.data_file)
     # run the experiment
@@ -78,7 +79,7 @@ def run_as_sweep(sweep_id:str):
     wandb.agent(f'PDE-Operators-Baselines/{sweep_id}', run_experiment, count=15)
 
 if __name__ == '__main__':
-    # main()
-    run_as_sweep('c7vp9fvs')
+    main()
+    # run_as_sweep('c7vp9fvs')
 
 

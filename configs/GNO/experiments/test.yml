@@ -1,5 +1,8 @@
+DATA_FILE: burgers_64_x_non_period_y_non_period_fixed_nu.npz
 DEPTH: 2
 DROP_RATE: 0.0
 LATENT_DIMS: 16
 MLP_RATIO: 1
-NORMALIZATION: gaus_inst
+NORMALIZATION: gaus
+LOSS: MSE
+

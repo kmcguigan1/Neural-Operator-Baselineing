@@ -104,8 +104,16 @@ class EvalModule(object):
         mean_absolute_error = run_all_metrics(forecasts, actuals, last_input, split)
         return mean_absolute_error
 
-    def save_results(self, data_module:DataModule, model:ModelModule, split:str='test'):
-        forecasts, actuals, last_input, metadata = model.predict(data_module, split, return_metadata=True)
+    def _create_metadata_per_example(self, metadata:np.array, indecies:list, data_file:str):
+        info_to_save = []
+        for idx, (example_idx, time_idx) in enumerate(indecies):
+            param = metadata[example_idx]
+            info_to_save.append((param, time_idx))
+        return np.array(info_to_save)
+
+    def save_results(self, data_file:str, data_module:DataModule, model:ModelModule, split:str='test'):
+        forecasts, actuals, last_input, metadata, indecies = model.predict(data_module, split, return_metadata=True)
+        metadata = self._create_metadata_per_example(metadata, indecies, data_file)
         os.makedirs('results', exist_ok=True)
         save_name = f'{wandb.run.name}-{split}-results.npz'
         np.savez(
