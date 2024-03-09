@@ -31,16 +31,6 @@ class DataModule(object):
         self.patch_cutting = None
         if(config['EXP_KIND'] in ['AFNO', 'VIT']):
             self.patch_cutting = config['PATCH_SIZE']
-
-    def get_image_shape(self):
-        """This function provides the default image shape. This is 
-        needed for Conv LSTM models to setup. Most models should be shape agnostic
-        if they are operator based. This can map to files or things.
-
-        Returns:
-            int: The default image size.
-        """
-        return (64,64)
     
     def cut_data(self, array:np.array):
         if(self.patch_cutting is not None):
