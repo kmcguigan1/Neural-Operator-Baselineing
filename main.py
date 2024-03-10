@@ -5,9 +5,9 @@ import wandb
 from lightning.pytorch import seed_everything
 
 from utils.config_reader import parse_args, display_config_file, load_config
-from data_handling.data_module import get_data_module, DataModule
+from data_module.data_module import get_data_module
 from trainer.model_module import ModelModule
-from trainer.eval_module import EvalModule
+from utils.eval_module import EvalModule
 
 ## WAND CONSTANTS
 ENTITY = "kmcguigan"
@@ -69,9 +69,9 @@ def main():
     # add the experiment name to the config file
     config['EXP_NAME'] = args.exp_name
     config['EXP_KIND'] = args.exp_kind
-    config['SAVE_PREDS'] = True
+    config['SAVE_PREDS'] = False
     # get the data file
-    # config['DATA_FILE'] = short_to_file_name(args.data_file)
+    config['DATA_FILE'] = 'diffusion_varying_sinusoidal_init_fixed_diffusivity_non_periodic_boundaries.npz'
     # run the experiment
     run_experiment(config=config)
 

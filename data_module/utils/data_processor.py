@@ -5,13 +5,6 @@ from scipy.spatial.distance import cdist
 
 EPSILON = 1e-5
 
-def get_data_processor(config:dict):
-    if(config['DATA_PROC_KIND'] == 'single_sample'):
-        return SingleSampleDataProcessor(config)
-    elif(config['DATA_PROC_KIND'] == 'multi_sample'):
-        return DataProcessor(config)
-    raise Exception(f"Invalid DATA_PROC_KIND of {config['DATA_PROC_KIND']}")
-
 def generate_grid(nx, ny):
     grid_x, grid_y = np.meshgrid(
         np.linspace(start=0, stop=1.0, num=nx),
@@ -81,15 +74,15 @@ class DataProcessor(object):
         assert split == 'train'
         assert inference == False
         self.image_size = (data.shape[1:-1])
-        data = self.normalizer.fit_transform(data)
+        data = self.normalizer.fit_transform(data, split=split)
         grid = generate_grid(*self.image_size)
         data, grid = downsample_data(data, grid, ratio=self.downsampling_ratios[split])
         if(self.patch_size is not None):
             data, grid = cut_data(data, grid, self.patch_size)
         return data, grid 
 
-    def transform(self, data:np.ndarray, split:str, inference:bool=False, downsampling_ratio=None):
-        data = self.normalizer.transform(data)
+    def transform(self, data:np.ndarray, split:str, downsampling_ratio=None, inference:bool=False):
+        data = self.normalizer.transform(data, split=split)
         grid = generate_grid(*self.image_size)
         data, grid = downsample_data(data, grid, ratio=self.downsampling_ratios[split] if downsampling_ratio is None else downsampling_ratio)
         if(self.patch_size is not None):
@@ -97,7 +90,7 @@ class DataProcessor(object):
         return data, grid 
 
     def inverse_predictions(self, preds:np.ndarray, split:str):
-        return self.normalizer.inverse_transform(preds)
+        return self.normalizer.inverse_transform(preds, split=split)
 
 class SingleSampleDataProcessor(DataProcessor):
     def __init__(self, config:dict):
@@ -127,7 +120,7 @@ class SingleSampleDataProcessor(DataProcessor):
         assert inference == False
         self.image_size = (data.shape[1:-1])
         if(self.normalizer.pointwise == False):
-            data = self.normalizer.fit_transform(data)
+            data = self.normalizer.fit_transform(data, split=split)
             x, y = self.split_data(data)
         else:
             x, y = self.split_data(data)
@@ -140,7 +133,7 @@ class SingleSampleDataProcessor(DataProcessor):
 
     def transform(self, data:np.ndarray, split:str, inference:bool=False, downsampling_ratio=None):
         if(self.normalizer.pointwise == False):
-            data = self.normalizer.transform(data)
+            data = self.normalizer.transform(data, split=split)
             x, y = self.split_data(data)
         else:
             x, y = self.split_data(data)
@@ -182,7 +175,7 @@ class GraphDataProcessor(DataProcessor):
         assert split == 'train'
         assert inference == False
         self.image_size = (data.shape[1:-1])
-        data = self.normalizer.fit_transform(data)
+        data = self.normalizer.fit_transform(data, split=split)
         grid = generate_grid(*self.image_size)
         data, grid = downsample_data(data, grid, ratio=self.downsampling_ratios[split])
         if(self.patch_size is not None):
@@ -191,7 +184,7 @@ class GraphDataProcessor(DataProcessor):
         return data, grid, edges, edge_features
 
     def transform(self, data:np.ndarray, split:str, inference:bool=False, downsampling_ratio=None):
-        data = self.normalizer.transform(data)
+        data = self.normalizer.transform(data, split=split)
         grid = generate_grid(*self.image_size)
         data, grid = downsample_data(data, grid, ratio=self.downsampling_ratios[split] if downsampling_ratio is None else downsampling_ratio)
         if(self.patch_size is not None):
@@ -209,7 +202,7 @@ class GraphSingleSampleDataProcessor(SingleSampleDataProcessor):
         assert inference == False
         self.image_size = (data.shape[1:-1])
         if(self.normalizer.pointwise == False):
-            data = self.normalizer.fit_transform(data)
+            data = self.normalizer.fit_transform(data, split=split)
             x, y = self.split_data(data)
         else:
             x, y = self.split_data(data)
@@ -223,7 +216,7 @@ class GraphSingleSampleDataProcessor(SingleSampleDataProcessor):
 
     def transform(self, data:np.ndarray, split:str, inference:bool=False, downsampling_ratio=None):
         if(self.normalizer.pointwise == False):
-            data = self.normalizer.transform(data)
+            data = self.normalizer.transform(data, split=split)
             x, y = self.split_data(data)
         else:
             x, y = self.split_data(data)
@@ -242,58 +235,6 @@ class DataTransform(ABC):
     def __init__(self):
         self.pointwise = False
     @abstractmethod
-    def fit(self, array:np.array) -> None:
-        pass
-    @abstractmethod
-    def transform(self, array:np.array) -> np.array:
-        pass
-    @abstractmethod
-    def inverse_transform(self, array:np.array) -> np.array:
-        pass
-    def fit_transform(self, array:np.array) -> np.array:
-        self.fit(array)
-        return self.transform(array)
-
-class GausNorm(DataTransform):
-    def __init__(self):
-        super().__init__()
-        self.mean = None
-        self.var = None
-    def fit(self, array:np.array) -> None:
-        self.mean = np.mean(array)
-        self.var = np.std(array)
-    def transform(self, array:np.array) -> np.array:
-        return (array - self.mean) / self.var
-    def inverse_transform(self, array:np.array) -> np.array:
-        return array * self.var + self.mean
-
-class RangeNorm(DataTransform):
-    def __init__(self):
-        super().__init__()
-        self.lower = None
-        self.upper = None
-    def fit(self, array:np.array) -> None:
-        self.lower = np.min(array)
-        self.upper = np.max(array)
-    def transform(self, array:np.array) -> np.array:
-        return (array - self.lower) / (self.upper - self.lower)
-    def inverse_transform(self, array:np.array) -> np.array:
-        return array * (self.upper - self.lower) + self.lower
-
-class PassNorm(DataTransform):
-    def __init__(self):
-        super().__init__()
-    def fit(self, array:np.array) -> None:
-        pass
-    def transform(self, array:np.array) -> np.array:
-        return array
-    def inverse_transform(self, array:np.array) -> np.array:
-        return array
-
-class PointDataTransform(ABC):
-    def __init__(self):
-        self.pointwise = True
-    @abstractmethod
     def fit(self, array:np.array, split:str) -> None:
         pass
     @abstractmethod
@@ -306,9 +247,46 @@ class PointDataTransform(ABC):
         self.fit(array, split)
         return self.transform(array, split)
 
-class PointGausNorm(PointDataTransform):
+class GausNorm(DataTransform):
     def __init__(self):
         super().__init__()
+        self.mean = None
+        self.var = None
+    def fit(self, array:np.array, split:str) -> None:
+        self.mean = np.mean(array)
+        self.var = np.std(array)
+    def transform(self, array:np.array, split:str) -> np.array:
+        return (array - self.mean) / self.var
+    def inverse_transform(self, array:np.array, split:str) -> np.array:
+        return array * self.var + self.mean
+
+class RangeNorm(DataTransform):
+    def __init__(self):
+        super().__init__()
+        self.lower = None
+        self.upper = None
+    def fit(self, array:np.array, split:str) -> None:
+        self.lower = np.min(array)
+        self.upper = np.max(array)
+    def transform(self, array:np.array, split:str) -> np.array:
+        return (array - self.lower) / (self.upper - self.lower)
+    def inverse_transform(self, array:np.array, split:str) -> np.array:
+        return array * (self.upper - self.lower) + self.lower
+
+class PassNorm(DataTransform):
+    def __init__(self):
+        super().__init__()
+    def fit(self, array:np.array, split:str) -> None:
+        pass
+    def transform(self, array:np.array, split:str) -> np.array:
+        return array
+    def inverse_transform(self, array:np.array, split:str) -> np.array:
+        return array
+
+class PointGausNorm(DataTransform):
+    def __init__(self):
+        super().__init__()
+        self.pointwise = True
         self.mean = {}
         self.var = {}
     def fit(self, array:np.array, split:str) -> None:
@@ -319,9 +297,10 @@ class PointGausNorm(PointDataTransform):
     def inverse_transform(self, array:np.array, split:str) -> np.array:
         return array * self.var[split] + self.mean[split]
 
-class PointRangeNorm(PointDataTransform):
+class PointRangeNorm(DataTransform):
     def __init__(self):
         super().__init__()
+        self.pointwise = True
         self.lower = {}
         self.upper = {}
     def fit(self, array:np.array, split:str) -> None:

@@ -3,7 +3,7 @@ import numpy as np
 import torch
 
 from data_module.utils.data_reader import get_data_reader
-from data_module.utils.data_processor import get_data_processor
+from data_module.utils.data_processor import DataProcessor, SingleSampleDataProcessor, GraphDataProcessor, GraphSingleSampleDataProcessor
 from data_module.utils.dataset import PDEDataset, GraphPDEDataset, SingleSamplePDEDataset, SingleSampleGraphPDEDataset
 
 def get_data_module(config:dict):
@@ -23,17 +23,21 @@ class DataloaderContainer:
     Sometimes we need extra information about the datasets and this will be saved here"""
     dataloader: torch.utils.data.DataLoader
     image_size: int  
+    indecies: any
 
 class DataModule(object):
     def __init__(self, config:dict):
         # modules to load the data and to process it
         self.data_reader = get_data_reader(config)  
-        self.data_processor = get_data_processor(config)
+        self.data_processor = self.get_data_processor(config)
         # information we need for the data
         self.time_steps_in = config['TIME_STEPS_IN']
         self.time_steps_out = config['TIME_STEPS_OUT']
         self.time_int = config['TIME_INTERVAL']
         self.batch_size = config['BATCH_SIZE']
+
+    def get_data_processor(self, config:dict):
+        return DataProcessor(config)
 
     def pipeline(self, split:str, shuffle:bool=True, fit:bool=False, inference:bool=False):
         data = self.data_reader.load_data(split=split)
@@ -47,7 +51,7 @@ class DataModule(object):
     def _create_data_loader(self, dataset, shuffle:bool=True):
         image_size = dataset.image_shape
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=shuffle, num_workers=3, persistent_workers=True, pin_memory=False)
-        return DataloaderContainer(dataloader, image_size)
+        return DataloaderContainer(dataloader, image_size, dataset.indecies_map)
 
     def get_training_data(self):
         train_dataset = self.pipeline(split='train', shuffle=True, fit=True)
@@ -63,7 +67,9 @@ class DataModule(object):
 class GraphDataModule(DataModule):
     def __init__(self, config:dict):
         super().__init__(config)
-        self.neighbors_method = config['NEIGHBORS_METHOD']
+
+    def get_data_processor(self, config:dict):
+        return GraphDataProcessor(config)
 
     def pipeline(self, split:str, shuffle:bool=True, fit:bool=False, inference:bool=False):
         data = self.data_reader.load_data(split=split)
@@ -77,20 +83,25 @@ class GraphDataModule(DataModule):
 class SingleSampleDataModule(DataModule):
     def __init__(self, config:dict):
         super().__init__(config)
+    
+    def get_data_processor(self, config:dict):
+        return SingleSampleDataProcessor(config)
 
     def pipeline(self, split:str, shuffle:bool=True, fit:bool=False, inference:bool=False):
         data = self.data_reader.load_data(split=split)
         if(fit):
-            x, y, grid, edges, edge_feats = self.data_processor.fit(data, split=split)
+            x, y, grid = self.data_processor.fit(data, split=split)
         else:
-            x, y, grid, edges, edge_feats = self.data_processor.transform(data, split=split)
+            x, y, grid = self.data_processor.transform(data, split=split)
         dataset = SingleSamplePDEDataset(x, y, grid)
         return self._create_data_loader(dataset, shuffle=shuffle)
 
 class SingleSampleGraphDataModule(GraphDataModule):
     def __init__(self, config:dict):
         super().__init__(config)
-        self.neighbors_method = config['NEIGHBORS_METHOD']
+
+    def get_data_processor(self, config:dict):
+        return GraphSingleSampleDataProcessor(config)
 
     def pipeline(self, split:str, shuffle:bool=True, fit:bool=False, inference:bool=False):
         data = self.data_reader.load_data(split=split)

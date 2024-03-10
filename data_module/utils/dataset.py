@@ -66,7 +66,8 @@ class SingleSamplePDEDataset(torch.utils.data.Dataset):
         self.x = x.copy().astype(np.float32) # (example, x, y, time)
         self.y = y.copy().astype(np.float32) # (example, x, y, time)
         self.grid = grid.copy().astype(np.float32)
-        self.image_shape = self.array.shape[1:-1]
+        self.image_shape = self.x.shape[1:-1]
+        self.indecies_map = np.arange(self.x.shape[0])
     def __len__(self):
         return self.x.shape[0]
     def __getitem__(self, idx):
@@ -82,6 +83,7 @@ class SingleSampleGraphPDEDataset(torch.utils.data.Dataset):
         self.edges = edges.copy().astype(np.int32)
         self.edge_features = edge_features.copy().astype(np.float32)
         self.image_shape = self.x.shape[1:-1]
+        self.indecies_map = np.arange(self.x.shape[0])
     def __len__(self):
         return self.x.shape[0]
     def __getitem__(self, idx):

@@ -11,9 +11,11 @@ import lightning.pytorch as pl
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import Callback, EarlyStopping, ModelCheckpoint, LearningRateMonitor, RichProgressBar, TQDMProgressBar, ProgressBar
 
-
-from data_handling.data_module import DataModule
+from data_module.data_module import DataModule
 from constants import ACCELERATOR
+
+from trainer.base_models import BaseModel, GraphBaseModel
+from trainer.losses_and_metrics import CustomMAE, LpLoss, TimingCallback
 
 class LightningModule(pl.LightningModule):
     def __init__(self, config:dict, image_shape:tuple):
@@ -38,11 +40,26 @@ class LightningModule(pl.LightningModule):
             raise Exception(f'Invalid loss {config["LOSS"]}')
         self._train_acc = CustomMAE()
         self._val_acc = CustomMAE()
+        # get the normalization layer
+        self.norm_layer = self._setup_norm_layer(config)
 
-    def _run_model(self, batch, inference:bool = False):
+    def _setup_norm_layer(self, config:dict, dims:tuple=(1,2,3)):
+        # if we have a single sample loader then the instance wise stuff is 
+        # never gonna be applied here
+        if(config.get('SINGLE_SAMPLE_LOADER', False) == True):
+            return PassInstNorm()
+        # if we have a mutli sample model we should then grab the kind
+        # of normalization we are using
+        if(config['NORMALIZATION'] == 'pointwise_gaussian'):
+            return GausInstNorm(dims=dims)
+        if(config['NORMALIZATION'] == 'pointwise_range'):
+            return RangeInstNorm(dims=dims)
+        return PassInstNorm()
+
+    def _run_model(self, batch, inference:bool=False):
         if(inference):
             x, y, preds = self.model(batch, inference=True)
-            return x[..., -1], y, preds
+            return x, y, preds
         else:
             y, preds = self.model(batch)
             return preds, y
@@ -63,8 +80,8 @@ class LightningModule(pl.LightningModule):
         self.log('val/mae', self._val_acc, on_step=False, on_epoch=True, prog_bar=True, logger=True)
         
     def predict_step(self, batch, batch_idx):
-        last_observation, y, preds = self._run_model(batch, inference=True)
-        return preds, y, last_observation
+        x, y, preds = self._run_model(batch, inference=True)
+        return preds, y, x
 
     def configure_optimizers(self):
         # get the optimizer
@@ -110,11 +127,11 @@ class ModelModule(object):
         self.trainer, self.timer = self._setup_trainer(config)
 
     def fit(self, data_module:DataModule, config:dict):
-        train_loader, val_loader, train_image_shape = data_module.get_training_data()
-        self._create_lightning_module(config, train_image_shape)
+        train_loader, val_loader = data_module.get_training_data()
+        self._create_lightning_module(config, train_loader.image_size)
         if(config['EXP_KIND'] == 'PERSISTANCE'):
             return
-        self.trainer.fit(model=self.lightning_module, train_dataloaders=train_loader, val_dataloaders=val_loader)
+        self.trainer.fit(model=self.lightning_module, train_dataloaders=train_loader.dataloader, val_dataloaders=val_loader.dataloader)
         average_time_per_epoch = self.timer._get_average_time_per_epoch()
         total_epochs = self.timer.epoch_count
         wandb.log({'average_time_per_epoch':average_time_per_epoch, 'total_epochs':total_epochs})
@@ -125,27 +142,15 @@ class ModelModule(object):
         ])
         return predictions
 
-    def predict(self, data_module:DataModule, split:str, return_metadata:bool=False):
-        if(return_metadata):
-            data_loader, indecies, metadata = data_module.get_test_data(split=split, return_metadata=True)
-        else:
-            data_loader = data_module.get_test_data(split=split)
-        preds = self.trainer.predict(self.lightning_module, data_loader)
+    def predict(self, data_module:DataModule, split:str):
+        data_loader = data_module.get_test_data(split=split)
+        preds = self.trainer.predict(self.lightning_module, data_loader.dataloader)
         # get the forecasts
         forecasts = self.parse_model_outputs(preds, 0)
         actuals = self.parse_model_outputs(preds, 1)
-        last_input = self.parse_model_outputs(preds, 2)
+        inputs = self.parse_model_outputs(preds, 2)
         # inverse the model predictions
         forecasts = data_module.transform_predictions(forecasts, split=split)
         actuals = data_module.transform_predictions(actuals, split=split)
-        last_input = data_module.transform_predictions(last_input, split=split, no_time_dim=True)
-        if(return_metadata):
-            return forecasts, actuals, last_input, metadata, indecies
-        return forecasts, actuals, last_input
-
-
-        
-
-
-
-
+        inputs = data_module.transform_predictions(inputs, split=split)
+        return forecasts, actuals, inputs, data_loader.indecies

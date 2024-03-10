@@ -1,11 +1,14 @@
 # run information
 SEED: 1999
 # data information
+DATA_READER: NPZ
+SINGLE_SAMPLE_LOADER: False
+GRAPH_LOADER: False
 TIME_STEPS_IN: 7
 TIME_STEPS_OUT: 28
 BATCH_SIZE: 16
-TIME_INT: 1
-NORMALIZATION: None
+TIME_INTERVAL: 1
+NORMALIZATION: none
 # model information
 LOSS: MSE
 # train information
