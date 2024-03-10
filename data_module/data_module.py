@@ -1,120 +1,102 @@
-import os
-from copy import copy
-import numpy as np 
+from dataclasses import dataclass
+import numpy as np
 import torch
 
-from einops import rearrange
+from data_module.utils.data_reader import get_data_reader
+from data_module.utils.data_processor import get_data_processor
+from data_module.utils.dataset import PDEDataset, GraphPDEDataset, SingleSamplePDEDataset, SingleSampleGraphPDEDataset
 
-from constants import DATA_PATH
-from data_handling.datasets import PDEDataset, GraphPDEDataset
-from data_handling.transforms import GausNorm, RangeNorm, DataTransform
+def get_data_module(config:dict):
+    if(config.get('SINGLE_SAMPLE_LOADER', False) == True and config.get('GRAPH_LOADER', False) == False):
+        return SingleSampleDataModule(config)
+    if(config.get('SINGLE_SAMPLE_LOADER', False) == True and config.get('GRAPH_LOADER', False) == True):
+        return SingleSampleGraphDataModule(config)
+    if(config.get('SINGLE_SAMPLE_LOADER', False) == False and config.get('GRAPH_LOADER', False) == False):
+        return DataModule(config)
+    if(config.get('SINGLE_SAMPLE_LOADER', False) == False and config.get('GRAPH_LOADER', False) == True):
+        return GraphDataModule(config)
+    raise Exception("A valid combo to select a data module was not specified")
 
-SAVING_TIME_INT = 4
+@dataclass
+class DataloaderContainer:
+    """This is the class that manages the context for the data loader objects.
+    Sometimes we need extra information about the datasets and this will be saved here"""
+    dataloader: torch.utils.data.DataLoader
+    image_size: int  
 
 class DataModule(object):
     def __init__(self, config:dict):
-        self.data_file = os.path.join(DATA_PATH, config['DATA_FILE'])
+        # modules to load the data and to process it
+        self.data_reader = get_data_reader(config)  
+        self.data_processor = get_data_processor(config)
+        # information we need for the data
+        self.time_steps_in = config['TIME_STEPS_IN']
+        self.time_steps_out = config['TIME_STEPS_OUT']
+        self.time_int = config['TIME_INTERVAL']
         self.batch_size = config['BATCH_SIZE']
-        self.time_steps_in = config["TIME_STEPS_IN"]
-        self.time_steps_out = config["TIME_STEPS_OUT"]
-        self.time_int = config["TIME_INT"]
-        # create a storage for the image sizes
-        self.image_sizes = {}
-        # transform
-        if(config['NORMALIZATION'] == 'gaus'):
-            self.transform = GausNorm()
-        elif(config['NORMALIZATION'] == 'range'):
-            self.transform = RangeNorm()
+
+    def pipeline(self, split:str, shuffle:bool=True, fit:bool=False, inference:bool=False):
+        data = self.data_reader.load_data(split=split)
+        if(fit):
+            data, grid = self.data_processor.fit(data, split=split)
         else:
-            self.transform = None
-        # patching
-        self.patch_cutting = None
-        if(config['EXP_KIND'] in ['AFNO', 'VIT']):
-            self.patch_cutting = config['PATCH_SIZE']
-    
-    def cut_data(self, array:np.array):
-        if(self.patch_cutting is not None):
-            x_cut = array.shape[-2] % config['PATCH_SIZE']
-            y_cut = array.shape[-1] % config['PATCH_SIZE']
-            if(x_cut > 0):
-                array = array[..., :-x_cut, :]
-            if(y_cut > 0):
-                array = array[..., :-y_cut]
-        return array
-            
-    def load_data(self, split:str='train'):
-        with np.load(self.data_file) as file_data:
-            array = file_data[f'{split}_data']
-        array = self.cut_data(array)
-        return array
+            data, grid = self.data_processor.transform(data, split=split)
+        dataset = PDEDataset(data, grid, self.time_steps_in, self.time_steps_out, self.time_int)
+        return self._create_data_loader(dataset, shuffle=shuffle)
 
-    def _create_dataset(self, data:np.array, get_info_to_save:bool=False):
-        if(get_info_to_save):
-            return PDEDataset(data, self.time_steps_in, self.time_steps_out, SAVING_TIME_INT)
-        return PDEDataset(data, self.time_steps_in, self.time_steps_out, self.time_int)
-
-    def create_data_loader(self, data:np.array, shuffle:bool=True, split:str=None, get_image_shape:bool=False, get_info_to_save:bool=False):
-        dataset = self._create_dataset(data, get_info_to_save=get_info_to_save)
-        data_loader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=shuffle, num_workers=3, persistent_workers=True, pin_memory=False)
-        # save the split if we need it
-        if(split is not None):
-            self.image_sizes[split] = dataset.image_shape
-        # see if we are returning meta information about the indecies from the dataset
-        if(get_info_to_save):
-            return data_loader, dataset.indecies_map
-        # see if we get the image shape too
-        if(get_image_shape):
-            return data_loader, dataset.image_shape
-        return data_loader
+    def _create_data_loader(self, dataset, shuffle:bool=True):
+        image_size = dataset.image_shape
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=shuffle, num_workers=3, persistent_workers=True, pin_memory=False)
+        return DataloaderContainer(dataloader, image_size)
 
     def get_training_data(self):
-        train_data = self.load_data()
-        val_data = self.load_data(split='val')
-        # fit the transfrom if we have that
-        if(self.transform is not None):
-            train_data = self.transform.fit_transform(train_data)
-            val_data = self.transform.transform(val_data)
-        # make the data loader
-        train_loader, train_image_shape = self.create_data_loader(train_data, shuffle=True, get_image_shape=True)
-        val_loader = self.create_data_loader(val_data, shuffle=False)
-        return train_loader, val_loader, train_image_shape
+        train_dataset = self.pipeline(split='train', shuffle=True, fit=True)
+        val_dataset = self.pipeline(split='val', shuffle=False)
+        return train_dataset, val_dataset
 
-    def get_test_data(self, split:str='test', return_metadata:bool=False):
-        data = self.load_data(split=split)
-        if(self.transform is not None):
-            data = self.transform.transform(data)
-        if(return_metadata):
-            data_loader, indecies = self.create_data_loader(data, shuffle=False, split=split, get_info_to_save=True)
-            return data_loader, indecies, self.load_meta(split=split)
-        return self.create_data_loader(data, shuffle=False, split=split)
+    def get_test_data(self, split:str='test'):
+        return self.pipeline(split=split, shuffle=False, inference=True)
 
-    def transform_predictions(self, data:np.array, split:str=None, no_time_dim:bool=False):
-        if(self.transform is not None):
-            return self.transform.inverse_transform(data)
-        return data
+    def transform_predictions(self, data:np.array, split:str=None):
+        return self.data_processor.inverse_predictions(data, split=split)
 
 class GraphDataModule(DataModule):
     def __init__(self, config:dict):
         super().__init__(config)
-        self.neighbors_method = config['NEIGHBORS']
+        self.neighbors_method = config['NEIGHBORS_METHOD']
 
-    def _create_dataset(self, data:np.array, get_info_to_save:bool=False):
-        if(get_info_to_save):
-            return GraphPDEDataset(data, self.time_steps_in, self.time_steps_out, SAVING_TIME_INT, self.neighbors_method)
-        return GraphPDEDataset(data, self.time_steps_in, self.time_steps_out, self.time_int, self.neighbors_method)
-
-    def transform_predictions(self, data:np.array, split:str=None, no_time_dim:bool=False):
-        data = super().transform_predictions(data, no_time_dim=no_time_dim)
-        image_size = self.image_sizes[split]
-        example_count = data.shape[0]
-        if(no_time_dim):
-            data = rearrange(data, 'b (h w) -> b h w', b=example_count, h=image_size[0], w=image_size[1])
+    def pipeline(self, split:str, shuffle:bool=True, fit:bool=False, inference:bool=False):
+        data = self.data_reader.load_data(split=split)
+        if(fit):
+            data, grid, edges, edge_feats = self.data_processor.fit(data, split=split)
         else:
-            time_step_count = data.shape[-1]
-            data = rearrange(data, 'b (h w) c -> b h w c', b=example_count, h=image_size[0], w=image_size[1], c=time_step_count)
-        return data
+            data, grid, edges, edge_feats = self.data_processor.transform(data, split=split)
+        dataset = GraphPDEDataset(data, grid, edges, edge_feats, self.time_steps_in, self.time_steps_out, self.time_int, self.neighbors_method)
+        return self._create_data_loader(dataset, shuffle=shuffle)
 
-def get_data_module(config:dict):
-    if('GRAPH_DATA_LOADER' in config.keys() and config['GRAPH_DATA_LOADER'] == True):
-        return GraphDataModule(config)
-    return DataModule(config)
+class SingleSampleDataModule(DataModule):
+    def __init__(self, config:dict):
+        super().__init__(config)
+
+    def pipeline(self, split:str, shuffle:bool=True, fit:bool=False, inference:bool=False):
+        data = self.data_reader.load_data(split=split)
+        if(fit):
+            x, y, grid, edges, edge_feats = self.data_processor.fit(data, split=split)
+        else:
+            x, y, grid, edges, edge_feats = self.data_processor.transform(data, split=split)
+        dataset = SingleSamplePDEDataset(x, y, grid)
+        return self._create_data_loader(dataset, shuffle=shuffle)
+
+class SingleSampleGraphDataModule(GraphDataModule):
+    def __init__(self, config:dict):
+        super().__init__(config)
+        self.neighbors_method = config['NEIGHBORS_METHOD']
+
+    def pipeline(self, split:str, shuffle:bool=True, fit:bool=False, inference:bool=False):
+        data = self.data_reader.load_data(split=split)
+        if(fit):
+            x, y, grid, edges, edge_feats = self.data_processor.fit(data, split=split)
+        else:
+            x, y, grid, edges, edge_feats = self.data_processor.transform(data, split=split)
+        dataset = SingleSampleGraphPDEDataset(x, y, grid, edges, edge_feats)
+        return self._create_data_loader(dataset, shuffle=shuffle)
