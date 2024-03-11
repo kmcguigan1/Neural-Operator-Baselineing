@@ -79,13 +79,13 @@ class NeuralOperator(nn.Module):
         self.conv = SpectralConv2d(width, width, modes1, modes2, f"{self.layer_name}-Conv")
         self.mlp = ConvMLP(width, width, width, f"{self.layer_name}-MLP")
         self.w = nn.Conv2d(width, width, 1)
-        # self.norm = nn.InstanceNorm2d(width)
+        self.norm = nn.InstanceNorm2d(width)
         # self.norm1 = NormLayerPartial()
         # self.norm2 = NormLayerPartial()
         self.activation = activation
 
     def forward(self, x):
-        x1 = self.conv(x) #self.norm2(self.conv(self.norm1(x)))
+        x1 = self.norm(self.conv(self.norm(x)))
         x1 = self.mlp(x1)
         x2 = self.w(x)
         x = x1 + x2

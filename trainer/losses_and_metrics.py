@@ -4,7 +4,7 @@ import torch
 from torchmetrics import Metric
 from lightning.pytorch.callbacks import Callback
 
-EPSILON = 1e-6
+EPSILON = 1e-5
 
 class GausInstNorm(object):
     def __init__(self, dims:tuple):
