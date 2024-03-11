@@ -71,7 +71,7 @@ def main():
     config['EXP_KIND'] = args.exp_kind
     config['SAVE_PREDS'] = False
     # get the data file
-    config['DATA_FILE'] = 'diffusion_varying_sinusoidal_init_fixed_diffusivity_non_periodic_boundaries.npz'
+    config['DATA_FILE'] = 'ns_V1e-3_N5000_T50.mat'
     # run the experiment
     run_experiment(config=config)
 
