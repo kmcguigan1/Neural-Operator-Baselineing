@@ -5,9 +5,18 @@ import scipy
 
 from constants import DATA_PATH
 
+import gc
+
 class BaseDataReader(object):
     def __init__(self, config:dict):
         self.data_file = os.path.join(DATA_PATH, config['DATA_FILE'])
+        self.single_sample = config['SINGLE_SAMPLE_LOADER']
+        self.time_steps_in = config['TIME_STEPS_IN']
+        self.time_steps_out = config['TIME_STEPS_OUT']
+    def cut_data(self, data):
+        if(self.single_sample == True):
+            data = data[..., :self.time_steps_in+self.time_steps_out]
+        return data
     def load_data(self, split:str):
         raise NotImplementedError('This is the base data reader class')
 
@@ -19,29 +28,39 @@ class NpzDataReader(BaseDataReader):
             array = file_data[f'{split}_data']
         # we want the data in (example, dim, dim, time)
         array = array.transpose(0, 2, 3, 1)
+        array = self.cut_data(array)
         return array
 
 class MatDataReader(BaseDataReader):
     def __init__(self, config:dict):
         super().__init__(config)
-        self.data = {}
-    def _extract_data(self):
+        self.setup_data()
+
+    def setup_data(self):
         # a is (example, dim, dim)
         # u is (example, dim, dim, time)
         # t is (1, time)
-        data = scipy.io.loadmat('data/ns_data_V1e-4_N20_T50_R256test.mat')
-        # get the splits
-        example_count = data['u'].shape[0]
-        train_split = int(0.75 * example_count)
-        val_split = int(0.15 * example_count) + train_split
-        # load the actual data
-        self.data['train'] = data['u'][:train_split, ...]
-        self.data['val'] = data['u'][train_split:val_split, ...]
-        self.data['test'] = data['u'][val_split:, ...]
+        data = scipy.io.loadmat(self.data_file)['u']
+        # cut the data
+        data = self.cut_data(data)
+        example_count = data.shape[0]
+        self.train_split = int(0.75 * example_count)
+        self.val_split = int(0.15 * example_count) + self.train_split
+        # get the data splits
+        data = self.cut_data(data)
+        self.train_data = data[:self.train_split, ...]
+        self.val_data = data[self.train_split:self.val_split, ...]
+        self.test_data = data[self.val_split:, ...]
     def load_data(self, split:str):
-        if(split not in self.data.keys()):
-            self._extract_data()
-        return self.data[split]
+        # load the actual data
+        if(split == 'train'):
+            return self.train_data
+        elif(split == 'val'):
+            return self.val_data
+        elif(split == 'test'):
+            return self.test_data
+        else:
+            raise Exception(f"Invalid split of {split}")
 
 def get_data_reader(config:dict) -> BaseDataReader:
     if(config['DATA_READER'] == 'NPZ'):

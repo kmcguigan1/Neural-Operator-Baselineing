@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import numpy as np
 import torch
+import gc
 
 from data_module.utils.data_reader import get_data_reader
 from data_module.utils.data_processor import DataProcessor, GraphDataProcessor, DataContainer, GraphDataContainer
@@ -54,13 +55,15 @@ class DataModule(object):
         data = self.data_reader.load_data(split=split)
         data_container = self.data_processor.transform(data, split=split, fit=fit)
         dataset = self.get_dataset(data_container)
+        del data_container
+        gc.collect()
         return self._create_data_loader(dataset, shuffle=shuffle)
 
     def _create_data_loader(self, dataset, shuffle:bool=True):
         image_size = dataset.image_shape
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=shuffle, num_workers=3, persistent_workers=True, pin_memory=False)
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=shuffle, num_workers=1, persistent_workers=True, pin_memory=False)
         return DataloaderContainer(dataloader, image_size, dataset.indecies_map, shuffle)
-
+    
     def get_training_data(self):
         train_dataset = self.pipeline(split='train', shuffle=True, fit=True)
         val_dataset = self.pipeline(split='val', shuffle=False)

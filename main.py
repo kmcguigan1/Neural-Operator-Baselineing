@@ -13,6 +13,9 @@ from utils.eval_module import EvalModule
 ENTITY = "kmcguigan"
 PROJECT = "PDE-Operators-Baselines"
 
+from constants import WANDB_KEY
+wandb.login(key=WANDB_KEY, relogin=True)
+
 def run_experiment(config=None):
     # setup our wandb run we may choose not to track a run if we want
     # by using wandb offline or something
@@ -71,7 +74,7 @@ def main():
     config['EXP_KIND'] = args.exp_kind
     config['SAVE_PREDS'] = False
     # get the data file
-    config['DATA_FILE'] = 'ns_V1e-3_N5000_T50.mat'
+    config['DATA_FILE'] = 'ns_data_V1e-4_N20_T50_R256test.mat'
     # run the experiment
     run_experiment(config=config)
 

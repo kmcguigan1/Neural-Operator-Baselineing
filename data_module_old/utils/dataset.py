@@ -8,12 +8,14 @@ class PDEDataset(torch.utils.data.Dataset):
     def __init__(self, data_container:DataContainer, time_steps_in:int, time_steps_out:int, time_interval:int):
         super().__init__()
         # save the data that we need
-        self.array = data_container.data.copy().astype(np.float32) # (example, x, y, time)
-        self.grid = data_container.grid.copy().astype(np.float32)
-        self.image_shape = self.array.shape[-2:]
         self.time_steps_in = time_steps_in
         self.time_steps_out = time_steps_out
         self.time_interval = time_interval
+        self.array = data_container.data.astype(np.float32) # (example, x, y, time)
+        if(self.time_interval == -1):
+            self.array = self.array[..., :self.time_steps_in+self.time_steps_out]
+        self.grid = data_container.grid.astype(np.float32)
+        self.image_shape = self.array.shape[-2:]
         # generate the indecies for where we can take samples from
         self.indecies_map = []
         for example_idx in range(self.array.shape[0]):
@@ -38,15 +40,17 @@ class GraphPDEDataset(torch.utils.data.Dataset):
     def __init__(self, data_container:GraphDataContainer, time_steps_in:int, time_steps_out:int, time_interval:int, neighbors_method:str):
         super().__init__()
         # save the data that we need
-        self.array = data_container.data.copy().astype(np.float32) # (example, x, y, time)
-        self.grid = data_container.grid.copy().astype(np.float32)
-        self.edges = data_container.edges.copy().astype(np.int32)
-        self.edge_attrs = data_container.edge_attrs.copy().astype(np.float32)
-        self.image_shape = self.array.shape[1:-1]
         self.time_steps_in = time_steps_in
         self.time_steps_out = time_steps_out
         self.time_interval = time_interval
         self.neighbors_method = neighbors_method
+        self.array = data_container.data.astype(np.float32) # (example, x, y, time)
+        if(self.time_interval == -1):
+            self.array = self.array[..., :self.time_steps_in+self.time_steps_out]
+        self.grid = data_container.grid.astype(np.float32)
+        self.edges = data_container.edges.astype(np.int32)
+        self.edge_attrs = data_container.edge_attrs.astype(np.float32)
+        self.image_shape = self.array.shape[1:-1]
         # generate the indecies for where we can take samples from
         self.indecies_map = []
         for example_idx in range(self.array.shape[0]):

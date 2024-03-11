@@ -43,7 +43,7 @@ class ModelModule(object):
             max_epochs=config['EPOCHS'],
             deterministic=False,
             callbacks=[early_stopping, model_checkpoint_val_loss, lr_monitor, timer_callback],
-            log_every_n_steps=10
+            log_every_n_steps=1
         )
         return trainer, timer_callback
 
@@ -113,9 +113,9 @@ class LightningModule(pl.LightningModule):
         if(config['EXP_KIND'] == 'FNO'):
             return BasicFNO2d(config)
         if(config['EXP_KIND'] == 'CONV_LSTM'):
-            return ConvLSTMModel(config, image_shape)
+            return ConvLSTMModel(config, image_size)
         if(config['EXP_KIND'] == 'AFNO'):
-            return AFNO(config, image_shape)
+            return AFNO(config, image_size)
         if(config['EXP_KIND'] == 'PERSISTANCE'):
             return PersistanceModel(config)
         if(config['EXP_KIND'] == 'VIT'):
