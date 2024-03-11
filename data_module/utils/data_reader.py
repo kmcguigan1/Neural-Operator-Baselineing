@@ -9,7 +9,7 @@ class BaseDataReader(object):
     def __init__(self, config:dict):
         self.data_file = os.path.join(DATA_PATH, config['DATA_FILE'])
     def load_data(self, split:str):
-        pass
+        raise NotImplementedError('This is the base data reader class')
 
 class NpzDataReader(BaseDataReader):
     def __init__(self, config:dict):
@@ -17,6 +17,7 @@ class NpzDataReader(BaseDataReader):
     def load_data(self, split:str):
         with np.load(self.data_file) as file_data:
             array = file_data[f'{split}_data']
+        # we want the data in (example, dim, dim, time)
         array = array.transpose(0, 2, 3, 1)
         return array
 

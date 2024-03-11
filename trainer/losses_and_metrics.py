@@ -89,7 +89,10 @@ class LpLoss(object):
                 return torch.sum(diff_norms/y_norms)
         return diff_norms/y_norms
     def __call__(self, x, y):
-        return self.rel(x, y)
+        loss = 0
+        for step in range(x.shape[-1]):
+            loss += self.rel(x[..., step], y[..., step])
+        return loss
 
 class TimingCallback(Callback):
     def __init__(self):
