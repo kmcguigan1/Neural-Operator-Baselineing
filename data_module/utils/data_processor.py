@@ -1,10 +1,20 @@
+from dataclasses import dataclass
 from abc import ABC, abstractmethod
 import numpy as np 
 
 from scipy.spatial.distance import cdist
-from data_module.data_module import DataContainer, GraphDataContainer
 
 EPSILON = 1e-5
+
+@dataclass
+class DataContainer:
+    data: np.array
+    grid: np.array
+
+@dataclass
+class GraphDataContainer(DataContainer):
+    edges: np.array
+    edge_attrs: np.array
 
 class DataProcessor(object):
     def __init__(self, config:dict):

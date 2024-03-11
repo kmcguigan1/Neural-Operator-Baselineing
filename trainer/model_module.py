@@ -14,7 +14,6 @@ from lightning.pytorch.callbacks import Callback, EarlyStopping, ModelCheckpoint
 from data_module.data_module import DataModule
 from constants import ACCELERATOR
 
-from trainer.base_models import BaseModel, GraphBaseModel
 from trainer.losses_and_metrics import CustomMAE, LpLoss, TimingCallback
 from trainer.losses_and_metrics import GausInstNorm, RangeInstNorm, PassInstNorm
 
@@ -50,7 +49,10 @@ class ModelModule(object):
 
     def _create_lightning_module(self, config:dict, image_shape:tuple):
         assert self.lightning_module is None, "attempting to reset lightning module in model module."
-        self.lightning_module = LightningModule(config, image_shape)
+        if(config.get("GRAPH_DATA_LOADER", False) == True):
+            self.lightning_module = GraphLightningModule(config, image_shape)
+        else:
+            self.lightning_module = LightningModule(config, image_shape)
         self.trainer, self.timer = self._setup_trainer(config)
 
     def fit(self, data_module:DataModule, config:dict):
@@ -151,7 +153,7 @@ class LightningModule(pl.LightningModule):
     def configure_optimizers(self):
         # get the optimizer
         if(self.optimizer_params['KIND'] == 'adam'):
-            optimizer = torch.optim.Adam(self.parameters(), lr=self.leraning_rate)#, weight_decay=self.optimizer_params['WEIGHT_DECAY'])
+            optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)#, weight_decay=self.optimizer_params['WEIGHT_DECAY'])
         else:
             raise Exception(f"Invalid optimizer specified of {self.optimizer_params['KIND']}")
         # get the 
@@ -174,8 +176,6 @@ class LightningModule(pl.LightningModule):
         preds = self.model(x, grid)
         # undo the transform
         preds = self.norm_layer.inverse(preds, info)
-        # get the loss
-        loss = self._loss_fn(preds.reshape(B, -1), y.reshape(B, -1))
         # if we are not inferencing just return
         if(not inference):
             return y, preds
@@ -201,8 +201,6 @@ class GraphLightningModule(LightningModule):
         preds = self.norm_layer.inverse(preds, info)
         # undo the transform
         preds = self.norm_layer.inverse(preds, info)
-        # apply the loss function
-        loss = self._loss_fn()
         # if we are not inferencing just return
         if(not inference):
             return y, preds

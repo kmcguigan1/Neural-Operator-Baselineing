@@ -25,9 +25,9 @@ def calculate_mean_squared_error(forecasts:np.array, actuals:np.array, metric_na
     log_single_metric(split_name, metric_name, mean_abs_error)
     log_step_metric(split_name, f'{metric_name}_by_step', mean_abs_step_error)
 
-def calculate_relative_loss(forecasts:np.array, actuals:np.array, metric_name:str, split_name:str, order=1) -> None:
-    relative_forecasts = forecasts / (np.linalg.norm(forecasts, ord=order, axis=1, keepdims=True) + 1e-8)
-    relative_actuals = actuals / (np.linalg.norm(actuals, ord=order, axis=1, keepdims=True) + 1e-8)
+def calculate_relative_loss(forecasts:np.array, actuals:np.array, metric_name:str, split_name:str, order=2) -> None:
+    relative_forecasts = forecasts / (np.linalg.norm(forecasts, ord=order, axis=1, keepdims=True) + 1e-5)
+    relative_actuals = actuals / (np.linalg.norm(actuals, ord=order, axis=1, keepdims=True) + 1e-5)
     abs_error = np.abs(np.subtract(relative_forecasts, relative_actuals))
     mean_abs_error = np.mean(abs_error)
     mean_abs_step_error = np.array([np.mean(abs_error[...,idx]) for idx in range(abs_error.shape[-1])])

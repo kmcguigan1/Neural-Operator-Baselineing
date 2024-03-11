@@ -79,6 +79,8 @@ class LpLoss(object):
                 return torch.sum(all_norms)
         return all_norms
     def rel(self, x, y):
+        # we could improve this by vectorizing this operation
+        # this is an interesting loss tho
         num_examples = x.size()[0]
         diff_norms = torch.norm(x.reshape(num_examples,-1) - y.reshape(num_examples,-1), self.p, 1)
         y_norms = torch.norm(y.reshape(num_examples,-1), self.p, 1)

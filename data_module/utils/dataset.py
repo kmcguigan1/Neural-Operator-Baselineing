@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 from scipy.spatial.distance import cdist
-from data_module.data_module import DataContainer, GraphDataContainer
+from data_module.utils.data_processor import DataContainer, GraphDataContainer
 
 class PDEDataset(torch.utils.data.Dataset):
     def __init__(self, data_container:DataContainer, time_steps_in:int, time_steps_out:int, time_interval:int):

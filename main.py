@@ -5,7 +5,7 @@ import wandb
 from lightning.pytorch import seed_everything
 
 from utils.config_reader import parse_args, display_config_file, load_config
-from data_module.data_module import get_data_module
+from data_module.data_module import DataModule
 from trainer.model_module import ModelModule
 from utils.eval_module import EvalModule
 
@@ -24,7 +24,7 @@ def run_experiment(config=None):
         seed_everything(config['SEED'], workers=True)
         # get the data module object that holds everything to do with the 
         # data for this experiment
-        data_module = get_data_module(config)
+        data_module = DataModule(config)
         # get the model module
         # this module handles the training and things of the model
         # it should build the model and manage its train and predict calls

@@ -3,37 +3,17 @@ import numpy as np
 import torch
 
 from data_module.utils.data_reader import get_data_reader
-from data_module.utils.data_processor import DataProcessor, SingleSampleDataProcessor, GraphDataProcessor, GraphSingleSampleDataProcessor
-from data_module.utils.dataset import PDEDataset, GraphPDEDataset, SingleSamplePDEDataset, SingleSampleGraphPDEDataset
-
-def get_data_module(config:dict):
-    if(config.get('SINGLE_SAMPLE_LOADER', False) == True and config.get('GRAPH_LOADER', False) == False):
-        return SingleSampleDataModule(config)
-    if(config.get('SINGLE_SAMPLE_LOADER', False) == True and config.get('GRAPH_LOADER', False) == True):
-        return SingleSampleGraphDataModule(config)
-    if(config.get('SINGLE_SAMPLE_LOADER', False) == False and config.get('GRAPH_LOADER', False) == False):
-        return DataModule(config)
-    if(config.get('SINGLE_SAMPLE_LOADER', False) == False and config.get('GRAPH_LOADER', False) == True):
-        return GraphDataModule(config)
-    raise Exception("A valid combo to select a data module was not specified")
+from data_module.utils.data_processor import DataProcessor, GraphDataProcessor, DataContainer, GraphDataContainer
+from data_module.utils.dataset import PDEDataset, GraphPDEDataset
 
 @dataclass
 class DataloaderContainer:
     """This is the class that manages the context for the data loader objects.
     Sometimes we need extra information about the datasets and this will be saved here"""
     dataloader: torch.utils.data.DataLoader
-    image_size: int  
+    image_size: int
+    indecies: any  
     shuffling: bool
-
-@dataclass
-class DataContainer:
-    data: np.array
-    grid: np.array
-
-@dataclass
-class GraphDataContainer(DataContainer):
-    edges: np.array
-    edge_attrs: np.array
 
 class DataModule(object):
     def __init__(self, config:dict):
@@ -43,6 +23,7 @@ class DataModule(object):
         # information we need for the data
         self.dataset_kwargs = self.get_dataset_kwargs(config)
         self.batch_size = config['BATCH_SIZE']
+        self.is_graph_loader = config.get('GRAPH_LOADER', False)
 
     def get_data_processor(self, config:dict):
         if(config.get('GRAPH_LOADER', False) == True):
@@ -55,21 +36,21 @@ class DataModule(object):
             'time_steps_out': config['TIME_STEPS_OUT']
         }
         if(config.get('GRAPH_LOADER', False) == True):
-            kwargs['N_NEIGHBORS'] = config['N_NEIGHBORS']
+            kwargs['n_neighbors'] = config['N_NEIGHBORS']
         if(config.get('SINGLE_SAMPLE_LOADER', False) == False):
-            kwargs['TIME_INTERVAL'] = config['TIME_INTERVAL']
+            kwargs['time_interval'] = config['TIME_INTERVAL']
         else:
-            kwargs['TIME_INTERVAL'] = -1
+            kwargs['time_interval'] = -1
         return kwargs
         
     def get_dataset(self, data_container:DataContainer):
-        if(config.get('GRAPH_LOADER', False) == False):
+        if(self.is_graph_loader == False):
             return PDEDataset(data_container, **self.dataset_kwargs)
-        if(config.get('GRAPH_LOADER', False) == True):
+        if(self.is_graph_loader == True):
             return GraphPDEDataset(data_container, **self.dataset_kwargs)
         raise Exception("A valid combo to select a dataset was not specified")
 
-    def pipeline(self, split:str, shuffle:bool=True, fit:bool=False):
+    def pipeline(self, split:str, shuffle:bool=True, fit:bool=False, inference:bool=False):
         data = self.data_reader.load_data(split=split)
         data_container = self.data_processor.transform(data, split=split, fit=fit)
         dataset = self.get_dataset(data_container)
