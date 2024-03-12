@@ -2,12 +2,18 @@ import gc
 from datetime import datetime
 import wandb
 
+import lightning.pytorch as pl
 from lightning.pytorch import seed_everything
+from lightning.pytorch.loggers import WandbLogger
+from lightning.pytorch.callbacks import Callback, EarlyStopping, ModelCheckpoint, LearningRateMonitor, RichProgressBar, TQDMProgressBar, ProgressBar, ModelSummary
 
 from utils.config_reader import parse_args, display_config_file, load_config
-from data_module.data_module import DataModule
-from trainer.model_module import ModelModule
-from utils.eval_module import EvalModule
+from dataset.data import get_data_loaders
+from model.model import Model
+from constants import ACCELERATOR
+
+import torch
+torch.set_float32_matmul_precision('medium')
 
 ## WAND CONSTANTS
 ENTITY = "kmcguigan"
@@ -25,41 +31,29 @@ def run_experiment(config=None):
         display_config_file(config)
         # seed the environment
         seed_everything(config['SEED'], workers=True)
-        # get the data module object that holds everything to do with the 
-        # data for this experiment
-        data_module = DataModule(config)
-        # get the model module
-        # this module handles the training and things of the model
-        # it should build the model and manage its train and predict calls
-        model_module = ModelModule(config)
-        # now we need to fit the model
-        # this is something that should be handled by the model module
-        model_module.fit(data_module, config)
-        # after having fit the data module we should evaluate it now
-        # the model doesn't need to know how to evaluate itself
-        # therefore we should use an evaluator module to do this
-        evaluator_module = EvalModule()
-        final_metric = evaluator_module.evaluate(data_module, model_module)
-        if('SAVE_PREDS' in config.keys() and config['SAVE_PREDS'] == True):
-            evaluator_module.save_results(config['DATA_FILE'], data_module, model_module, split='test')
-        # the experiment is complete and everything should be logged
-        # we can now teardown our experiment in order
-        # del evaluator_module
-        # del model_module
-        # del data_module
+        # get the data that we will need to train on
+        train_loader, val_loader, test_loader, transform, train_example_count, train_image_size = get_data_loaders(config)
+        # get the model that we will be fitting
+        model = Model(config, train_example_count, train_image_size)
+        # get the trainer that we will use to fit the model
+        lightning_logger = WandbLogger(log_model=False)
+        lr_monitor = LearningRateMonitor(logging_interval='epoch')
+        early_stopping = EarlyStopping('val/loss', patience=4)
+        model_checkpoint_val_loss = ModelCheckpoint(monitor="val/loss", mode="min", filename="Ep{epoch:02d}-val{val/loss:.2f}-best", auto_insert_metric_name=False, verbose=True)
+        trainer = pl.Trainer(
+            accelerator=ACCELERATOR,
+            logger=lightning_logger,
+            max_epochs=config['EPOCHS'],
+            deterministic=False,
+            callbacks=[early_stopping, model_checkpoint_val_loss, lr_monitor, ModelSummary()],
+            log_every_n_steps=1
+        )
+        # fit the model on the training data
+        trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
+        trainer.predict(model=model, dataloaders=test_loader)
+        # predict the model
         gc.collect()
-        return final_metric
-
-def short_to_file_name(shorthand:str):
-    shorthands = {
-        'burgers_bc_fixed':'burgers_64_x_non_period_y_non_period_fixed_nu.npz',
-        'burgers_bc_vary':'burgers_64_x_non_period_y_non_period_varying_nu.npz',
-        'burgers_vary':'burgers_64_x_period_y_period_varying_nu.npz',
-        'diff_bc_fixed':'diffusion_varying_sinusoidal_init_fixed_diffusivity_non_periodic_boundaries.npz',
-        'diff_bc_vary':'diffusion_varying_sinusoidal_init_varying_diffusivity_non_periodic_boundaries.npz',
-        'diff_vary':'diffusion_varying_sinusoidal_init_varying_diffusivity_periodic_boundaries.npz'
-    }
-    return shorthands[shorthand]
+        return
 
 def main():
     # get the args
@@ -72,9 +66,8 @@ def main():
     # add the experiment name to the config file
     config['EXP_NAME'] = args.exp_name
     config['EXP_KIND'] = args.exp_kind
-    config['SAVE_PREDS'] = False
     # get the data file
-    config['DATA_FILE'] = 'ns_data_V1e-4_N20_T50_R256test.mat'
+    config['DATA_FILE'] = 'ns_V1e-3_N5000_T50.mat'
     # run the experiment
     run_experiment(config=config)
 
