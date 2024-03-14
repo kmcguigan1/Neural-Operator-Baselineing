@@ -22,7 +22,6 @@ class PDEDataModule(DataModule):
         data = data.astype(np.float32)
         # get the data in the shape that we want it
         data = data[..., :self.time_steps_in+self.time_steps_out]
-        data = data[:100, ...]
         return data
 
     def get_dataset(self, data:np.ndarray, grid:np.ndarray):

@@ -1,22 +1,19 @@
 # run information
 SEED: 1999
 # data information
-DATA_READER: MAT
-SINGLE_SAMPLE_LOADER: True
 GRAPH_LOADER: False
 TIME_STEPS_IN: 10
-TIME_STEPS_OUT: 20
+TIME_STEPS_OUT: 10
 BATCH_SIZE: 20
-TIME_INTERVAL: 1
 NORMALIZATION: none
 # model information
-LOSS: LPLOSS
+LOSS: MSE
 # train information
-EPOCHS: 2
+EPOCHS: 500
 LEARNING_RATE: 0.001
 OPTIMIZER: 
   KIND: adam
 SCHEDULER:
-  KIND: reducer
-  FACTOR: 0.1
-  PATIENCE: 10
+  KIND: cosine
+  # PATIENCE: 2
+  # FACTOR: 0.5

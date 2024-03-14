@@ -33,7 +33,7 @@ class ModuleModule(pl.LightningModule):
         
     def get_model(self, config:dict, image_size:tuple):
         if(config['EXP_KIND'] == 'CONV_LSTM'):
-            return FNO2d(config)
+            return ConvLSTMModel(config, image_size)
         raise Exception(f"Invalid model kind specified of {config['EXP_KIND']}")
     
     def get_loss(self, config:dict):
@@ -43,12 +43,12 @@ class ModuleModule(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         loss, _, _ = self.run_batch(batch)
-        self.log("train/loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         loss, _, _ = self.run_batch(batch)
-        self.log("val/loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
         
     def predict_step(self, batch, batch_idx):
         _, pred, actual = self.run_batch(batch)

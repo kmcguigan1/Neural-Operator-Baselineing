@@ -17,6 +17,7 @@ class DataModule(ABC):
         self.normalizer = self.get_normalizer(config)
         self.image_size = None
         self.test_data = None
+        self.test_indecies = None
         self.train_example_count = None
 
     def get_normalizer(self, config:dict):
@@ -36,6 +37,7 @@ class DataModule(ABC):
         train_data = data[:train_split, ...]
         val_data = data[train_split:val_split, ...]
         test_data = data[val_split:, ...]
+        self.test_indecies = np.arange(data.shape[0])[val_split:]
         return train_data, val_data, test_data
 
     def generate_grid(self, nx:int, ny:int):
@@ -73,7 +75,7 @@ class DataModule(ABC):
         return data, grid
 
     def get_data_loader(self, dataset, shuffle:bool):
-        return torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=shuffle)
+        return torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=shuffle)#, num_workers=4, persistent_workers=True)
 
     def get_training_data(self):
         # load and split the data
@@ -90,7 +92,7 @@ class DataModule(ABC):
         return train_loader, val_loader
 
     def get_testing_data(self, downsample_ratio:int=None):
-        return self.pipeline(self.test_data, split='test', shuffle=False, downsample_ratio=downsample_ratio)
+        return self.pipeline(self.test_data, split='test', shuffle=False, downsample_ratio=downsample_ratio), self.test_indecies
 
     def inverse_transform(self, array:np.ndarray):
         return self.normalizer.inverse_transform(array)

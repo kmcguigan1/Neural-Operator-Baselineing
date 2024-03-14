@@ -1,5 +1,8 @@
+import os
 import numpy as np
 import wandb
+
+from constants import LOGS_PATH
 EPSILON = 1e-5
 
 def calculate_mean_absolute_error(forecasts:np.array, actuals:np.array, metric_name:str, split_name:str) -> None:
@@ -54,6 +57,22 @@ def flatten_outputs(forecasts:np.array, actuals:np.array):
     # now in the shape (sample, image, time)
     return forecasts, actuals
 
+def generate_boundary_distance_mask(nx:int, ny:int):
+    # define the boundaries grid mask
+    x_bounds = np.linspace(start=0, stop=1, num=nx).reshape(-1, 1).repeat(ny, axis=1)
+    x_bounds = np.stack((x_bounds, 1.0 - x_bounds), axis=-1).min(axis=-1)
+    y_bounds = np.linspace(start=0, stop=1, num=ny).reshape(1, -1).repeat(nx, axis=0)
+    y_bounds = np.stack((y_bounds, 1.0 - y_bounds), axis=-1).min(axis=-1)
+    bounds = np.stack((x_bounds, y_bounds), axis=-1).min(axis=-1)
+    return bounds
+
+
+# def calculate_boundary_errors(forecasts:np.array, actuals:np.array, metric_name:str, split_name:str):
+#     # examples are not scale agnostic, we should get the total squared values in each example
+#     # we want to normalize the error by the scale of the example that it is apart of 
+#     scales = np.sqrt(np.sum(np.square(actuals), axis=()))
+#     error = forecasts - actuals
+
 def log_single_metric(split_name, metric_name, metric_value):
     wandb.log({f'{split_name}/final/{metric_name}': metric_value})
 
@@ -62,6 +81,10 @@ def log_step_metric(split_name, metric_name, metric_values):
         wandb.log({f'{split_name}/final/{metric_name}': metric_values[step], 'index': step})
 
 def run_all_metrics(forecasts:np.array, actuals:np.array, split_name:str):
+    # before flattening run shape dependent metrics
+    # get the error as a factor of distance from the edges to see
+    # the impacts of boundary conditions
+
     # flatten the outputs
     forecasts, actuals = flatten_outputs(forecasts, actuals)
     # print the shapes
@@ -75,3 +98,14 @@ def run_all_metrics(forecasts:np.array, actuals:np.array, split_name:str):
     calculate_relative_error(forecasts, actuals, 'l2_norm_relative_error', split_name, order=2)
     calculate_relative_error(forecasts, actuals, 'l1_norm_relative_error', split_name, order=1)
     return mean_abs_error
+
+def save_predictions(predictions:np.ndarray, actuals:np.ndarray, indecies:np.ndarray, split:str, data_file:str):
+    os.makedirs(os.path.join(LOGS_PATH, 'results'), exist_ok=True)
+    np.savez(
+        os.path.join(LOGS_PATH, 'results', f'{wandb.run.name}-{split}.npz'),
+        predictions=predictions,
+        actuals=actuals,
+        split=split,
+        data_file=data_file,
+        indecies=indecies,
+    )
