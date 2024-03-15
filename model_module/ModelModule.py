@@ -6,7 +6,7 @@ import lightning.pytorch as pl
 
 from models.basic.conv_lstm import ConvLSTMModel
 
-class ModuleModule(pl.LightningModule):
+class ModelModule(pl.LightningModule):
     def __init__(self, config:dict, train_example_count:int, image_size:tuple):
         super().__init__()
         self.automatic_optimization = True

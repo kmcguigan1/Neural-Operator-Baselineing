@@ -1,9 +1,9 @@
 import torch
 
 from models.operators.basic_fno import FNO2d
-from model_module.ModelModule import ModuleModule
+from model_module.ModelModule import ModelModule
 
-class OperatorModelModule(ModuleModule):
+class OperatorModelModule(ModelModule):
     def __init__(self, config:dict, train_example_count:int, image_size:tuple):
         super().__init__(config, train_example_count, image_size)
 

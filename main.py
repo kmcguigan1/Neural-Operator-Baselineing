@@ -12,7 +12,7 @@ from lightning.pytorch.callbacks import Callback, EarlyStopping, ModelCheckpoint
 from utils.config_reader import parse_args, display_config_file, load_config
 from data_module.PDEDataModule import PDEDataModule
 from model_module.OperatorModelModule import OperatorModelModule
-from model_module.ModelModule import ModuleModule
+from model_module.ModelModule import ModelModule
 from utils.eval_predictions import run_all_metrics, save_predictions
 from constants import ACCELERATOR, LOGS_PATH
 
