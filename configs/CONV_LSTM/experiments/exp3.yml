@@ -1,0 +1,2 @@
+DATA_FILE: NavierStokes_V1e-5_N1200_T20.mat
+TIME_STEPS_OUT: 10

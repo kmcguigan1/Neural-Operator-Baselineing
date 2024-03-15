@@ -56,7 +56,7 @@ def run_experiment(config=None):
         data_module = PDEDataModule(config)
         train_loader, val_loader = data_module.get_training_data()
         # get the model that we will be fitting
-        model = OperatorModelModule(config, data_module.train_example_count, data_module.image_size)
+        model = ModelModule(config, data_module.train_example_count, data_module.image_size)
         # get the trainer that we will use to fit the model
         lightning_logger = WandbLogger(log_model=False)
         lr_monitor = LearningRateMonitor(logging_interval='epoch')
@@ -103,9 +103,9 @@ def main():
     config['EXP_NAME'] = args.exp_name
     config['EXP_KIND'] = args.exp_kind
     # get the data file
-    # config['DATA_FILE'] = 'ns_V1e-3_N5000_T50.mat'
-    # config['DATA_FILE'] = 'ns_V1e-4_N10000_T30.mat'
-    config['DATA_FILE'] = 'NavierStokes_V1e-5_N1200_T20.mat'
+    # # config['DATA_FILE'] = 'ns_V1e-3_N5000_T50.mat'
+    # # config['DATA_FILE'] = 'ns_V1e-4_N10000_T30.mat'
+    # config['DATA_FILE'] = 'NavierStokes_V1e-5_N1200_T20.mat'
     # run the experiment
     run_experiment(config=config)
 
