@@ -33,5 +33,5 @@ echo "loading virtual environment"
 source /home/kmcguiga/projects/def-sirisha/kmcguiga/environments/torch/bin/activate
 
 echo "syncing wandb"
-wandb sync --sync-all
+wandb sync --sync-all --clean logs/wandb
 echo "Finished running"

@@ -10,7 +10,7 @@
 
 #SBATCH --mem=32G
 
-#SBATCH --time=00:30:00 # time (HH:MM:SS)
+#SBATCH --time=04:30:00 # time (HH:MM:SS)
 
 #SBATCH --output=/home/kmcguiga/projects/def-sirisha/kmcguiga/computeCanadaOutput/%j.out
 
@@ -42,6 +42,7 @@ dataFile=${3:-None}
 echo "experiment kind $expKind"
 echo "experiment name $expName"
 
+wandb online
 python main.py --exp-kind=$expKind --exp-name=$expName --run-wandb
 
 echo "Finished running"
