@@ -9,7 +9,7 @@ NORMALIZATION: none
 # model information
 LOSS: MSE
 # train information
-EPOCHS: 500
+EPOCHS: 2 #500
 LEARNING_RATE: 0.001
 OPTIMIZER: 
   KIND: adam
