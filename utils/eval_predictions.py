@@ -120,7 +120,7 @@ def save_predictions(predictions:np.ndarray, actuals:np.ndarray, indecies:np.nda
     if(len(run_name) < 2):
         run_name = datetime.now().strftime("%d-%m-%Y--%H-%M-%S")
     np.savez(
-        os.path.join(LOGS_PATH, 'results', f'{run_name}-{split}.npz'),
+        os.path.join(RESULTS_PATH, f'{run_name}-{split}.npz'),
         predictions=predictions,
         actuals=actuals,
         split=split,
