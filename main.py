@@ -45,7 +45,7 @@ def evaluate_model(trainer, model, data_module, loader, split, indecies:np.ndarr
 def run_experiment(config=None):
     # setup our wandb run we may choose not to track a run if we want
     # by using wandb offline or something
-    with wandb.init(config=config, entity=ENTITY, project=PROJECT, dir=LOGS_PATH):
+    with wandb.init(config=config, entity=ENTITY, project=PROJECT):
         print(wandb.run.name)
         # get the configuration
         config = wandb.config
@@ -61,7 +61,7 @@ def run_experiment(config=None):
         lightning_logger = WandbLogger(log_model=False)
         lr_monitor = LearningRateMonitor(logging_interval='epoch')
         early_stopping = EarlyStopping('val/loss', patience=10)
-        model_checkpoint_val_loss = ModelCheckpoint(dirpath=os.path.join(LOGS_PATH, 'lightning', wandb.run.name), monitor="val/loss", mode="min", filename="Ep{epoch:02d}-val{val/loss:.2f}-best", auto_insert_metric_name=False, verbose=True)
+        model_checkpoint_val_loss = ModelCheckpoint(monitor="val/loss", mode="min", filename="Ep{epoch:02d}-val{val/loss:.2f}-best", auto_insert_metric_name=False, verbose=True)
         trainer = pl.Trainer(
             accelerator=ACCELERATOR,
             logger=lightning_logger,
