@@ -11,20 +11,20 @@ class ConvLSTMCell(nn.Module):
         self.kernel_size = kernel_size
         self.img_shape = img_shape
         # input gate
-        self.wxi = nn.Conv2d(self.in_dims, self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=True)
-        self.whi = nn.Conv2d(self.hidden_dims, self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=False)
+        self.wxi = nn.Conv2d(in_channels=self.in_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=True)
+        self.whi = nn.Conv2d(in_channels=self.hidden_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=False)
         self.wci = nn.Parameter(torch.zeros(1, self.hidden_dims, self.img_shape[0], self.img_shape[1]))
         # forget gate
-        self.wxf = nn.Conv2d(self.in_dims, self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=True)
-        self.whf = nn.Conv2d(self.hidden_dims, self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=False)
+        self.wxf = nn.Conv2d(in_channels=self.in_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=True)
+        self.whf = nn.Conv2d(in_channels=self.hidden_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=False)
         self.wcf = nn.Parameter(torch.zeros(1, self.hidden_dims, self.img_shape[0], self.img_shape[1]))
         # context gate
-        self.wxc = nn.Conv2d(self.in_dims, self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=True)
-        self.whc = nn.Conv2d(self.hidden_dims, self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=False)
+        self.wxc = nn.Conv2d(in_channels=self.in_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=True)
+        self.whc = nn.Conv2d(in_channels=self.hidden_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=False)
         # self.wcc = nn.Parameter(torch.zeros(1, self.hidden_dims, self.img_shape[0], self.img_shape[1]))
         # output gate
-        self.wxo = nn.Conv2d(self.in_dims, self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=True)
-        self.who = nn.Conv2d(self.hidden_dims, self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=False)
+        self.wxo = nn.Conv2d(in_channels=self.in_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=True)
+        self.who = nn.Conv2d(in_channels=self.hidden_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=False)
         self.wco = nn.Parameter(torch.zeros(1, self.hidden_dims, self.img_shape[0], self.img_shape[1]))
 
     def setup_states(self, batch_size, device):
@@ -39,13 +39,18 @@ class ConvLSTMCell(nn.Module):
 
     
     def forward(self, x):
+        # print("in gate")
         input_gate = F.sigmoid(self.wxi(x) + self.whi(self.hidden_state) + self.cell_state * self.wci)
+        # print("f gate")
 
         forget_gate = F.sigmoid(self.wxf(x) + self.whf(self.hidden_state) + self.cell_state * self.wcf)
+        # print("ncs gate")
 
         new_cell_state = forget_gate * self.cell_state + input_gate * F.tanh(self.wxc(x) + self.whc(self.hidden_state))
+        # print("o gate")
     
         output_gate = F.sigmoid(self.wxo(x) + self.who(self.hidden_state) + new_cell_state * self.wco)
+        # print("nhs gate")
         
         new_hidden_state = output_gate * F.tanh(new_cell_state)
 
@@ -63,15 +68,17 @@ class ConvLSTMModel(nn.Module):
         self.in_dims = 1
         self.out_dims = 1
         self.depth = config['DEPTH']
-        self.projection_kernel_size = config['PROJ_KERNEL_SIZE']
         self.kernel_size = config['KERNEL_SIZE']
         # generate the conv lstms
-        self.projector = nn.Conv2d(self.in_dims, self.latent_dims, kernel_size=self.projection_kernel_size, padding="same")
-        self.blocks = nn.ModuleList([
-            ConvLSTMCell(self.latent_dims, self.latent_dims, self.kernel_size, self.img_size) for _ in range(self.depth)
-        ])
-        # generate the head model
-        self.head = nn.Linear(self.latent_dims, self.out_dims)
+        blocks = []
+        for idx in range(self.depth):
+            in_dims, out_dims = self.latent_dims, self.latent_dims
+            if(idx == 0):
+                in_dims = self.in_dims
+            if(idx == self.depth - 1):
+                out_dims = self.out_dims
+            blocks.append(ConvLSTMCell(in_dims, out_dims, kernel_size=self.kernel_size, img_shape=self.img_size))
+        self.blocks = nn.ModuleList(blocks)
 
     def forward(self, x, grid):
         B, H, W, I = x.shape
@@ -81,37 +88,35 @@ class ConvLSTMModel(nn.Module):
         )
         # print("Init shape: ", x.shape)
         assert H == self.img_size[0] and W == self.img_size[1]
-        # get the latent states for all the inputs
-        input_latent_states = torch.zeros(B, self.input_steps, self.latent_dims, self.img_size[0], self.img_size[1], device=x.device)
-        for step in range(self.input_steps):
-            input_latent_states[:, step, ...] = self.projector(x[:, step, ...])
+        # setup the block states
+        for block in self.blocks:
+            block.setup_states(B, x.device)
+        # warmup the lstm
+        for step in range(self.input_steps-1):
+            last_step = x[:, step, ...]
+            for block in self.blocks:
+                last_step = block(last_step)
 
-        # warmup the lstm cells
-        for step in range(self.input_steps):
-            if(step > 0):
-                latent_input = latent_input.clone()
-            latent_input = input_latent_states[:, 0, ...]
-            for block_idx, block in enumerate(self.blocks):
-                if(step == 0):
-                    block.setup_states(B, x.device)
-                latent_input = block(latent_input)
-
-        # run the forecasts on the lstm cells
-        latent_states = torch.zeros(B, self.forecast_steps, self.latent_dims, self.img_size[0], self.img_size[1], device=x.device)        
-        # print("latent states shape: ", latent_states.shape)
-        # print("latent inputs shape: ", latent_input.shape)
+        # run the conv lstm
+        last_step = x[:, -1, ...]
+        predictions = torch.zeros(B, self.out_dims, self.img_size[0], self.img_size[1], self.forecast_steps, device=x.device)
         for step in range(self.forecast_steps):
-            # print(f"step {step} input shape: {latent_input.shape}")
-            for block_idx, block in enumerate(self.blocks):
-                latent_input = block(latent_input)
-            # save the latent
-            latent_states[:, step, ...] = latent_input
+            for block in self.blocks:
+                last_step = block(last_step)
+            predictions[..., step] = last_step
 
-        # project the latent variables into real space
-        latent_states = rearrange(latent_states,
-            "b f c h w -> b h w f c",
-            b=B, f=self.forecast_steps, c=self.latent_dims, h=H, w=W    
+        predictions = rearrange(predictions,
+            "b c h w o -> b h w (c o)",
+            b=B, h=H, w=W, c=1, o=self.forecast_steps
         )
-        x = self.head(latent_states)
-        x = torch.squeeze(x, dim=-1)
-        return x
+        return predictions
+
+if __name__ == '__main__':
+    mod = ConvLSTMModel({
+        "LATENT_DIMS": 8,
+        "TIME_STEPS_IN": 10,
+        "TIME_STEPS_OUT": 12,
+        'DEPTH': 2,
+        'KERNEL_SIZE': 5,
+    }, (32,32))
+    mod(torch.randn(2, 32, 32, 10), None)
