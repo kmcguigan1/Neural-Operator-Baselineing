@@ -1,8 +1,9 @@
 import os
+from datetime import datetime
 import numpy as np
 import wandb
 
-from constants import LOGS_PATH
+from constants import RESULTS_PATH
 EPSILON = 1e-5
 
 def calculate_mean_absolute_error(forecasts:np.array, actuals:np.array, metric_name:str, split_name:str) -> None:
@@ -66,12 +67,26 @@ def generate_boundary_distance_mask(nx:int, ny:int):
     bounds = np.stack((x_bounds, y_bounds), axis=-1).min(axis=-1)
     return bounds
 
+def calculate_boundary_distance_error(forecasts:np.ndarray, actuals:np.ndarray, bounds:np.ndarray):
+    # (example, dim, dim, time)
+    error = forecasts - actuals
+    error = np.sqrt(np.sum(np.square(forecasts - actuals), axis=(0,3)))
 
-# def calculate_boundary_errors(forecasts:np.array, actuals:np.array, metric_name:str, split_name:str):
-#     # examples are not scale agnostic, we should get the total squared values in each example
-#     # we want to normalize the error by the scale of the example that it is apart of 
-#     scales = np.sqrt(np.sum(np.square(actuals), axis=()))
-#     error = forecasts - actuals
+
+def get_average_position_error(forecasts:np.ndarray, actuals:np.ndarray):
+    # we need to make the error scale agnostic to have it be comparable
+    # this is fine since absolute values don't matter and its relative differences and 
+    # trends towards the boundaries we care about
+    # we will get the l2 norm for each example set
+    example_l2_norm = np.sqrt(np.sum(np.square(actuals), axis=(1,2,3)))
+    print(example_l2_norm)
+
+
+def calculate_boundary_errors(forecasts:np.array, actuals:np.array, metric_name:str, split_name:str):
+    # examples are not scale agnostic, we should get the total squared values in each example
+    # we want to normalize the error by the scale of the example that it is apart of 
+    scales = np.sqrt(np.sum(np.square(actuals), axis=()))
+    error = forecasts - actuals
 
 def log_single_metric(split_name, metric_name, metric_value):
     wandb.log({f'{split_name}/final/{metric_name}': metric_value})
@@ -100,9 +115,12 @@ def run_all_metrics(forecasts:np.array, actuals:np.array, split_name:str):
     return mean_abs_error
 
 def save_predictions(predictions:np.ndarray, actuals:np.ndarray, indecies:np.ndarray, split:str, data_file:str):
-    os.makedirs(os.path.join(LOGS_PATH, 'results'), exist_ok=True)
+    os.makedirs(RESULTS_PATH, exist_ok=True)
+    run_name = wandb.run.name
+    if(len(run_name) < 2):
+        run_name = datetime.now().strftime("%d-%m-%Y--%H-%M-%S")
     np.savez(
-        os.path.join(LOGS_PATH, 'results', f'{wandb.run.name}-{split}.npz'),
+        os.path.join(LOGS_PATH, 'results', f'{run_name}-{split}.npz'),
         predictions=predictions,
         actuals=actuals,
         split=split,
