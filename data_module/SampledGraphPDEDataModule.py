@@ -10,7 +10,7 @@ from torch_geometric.loader import DataLoader
 
 from data_module.PDEDataModule import PDEDataModule
 
-class GraphPDEDataModule(PDEDataModule):
+class SampledGraphPDEDataModule(PDEDataModule):
     def __init__(self, config:dict):
         super().__init__(config)
         self.edge_radius = 0.05 #config['EDGE_RADIUS']
@@ -25,6 +25,13 @@ class GraphPDEDataModule(PDEDataModule):
             grid[connections[1], :] 
         ), axis=-1)
         return edges, edge_features
+
+    def generate_boundary_distance_mask(self, grid:np.ndarray):
+        # define the boundaries grid mask
+        x_bounds = np.stack((grid[:, 0], 1.0 - grid[:, 0]), axis=-1).min(axis=-1)
+        y_bounds = np.stack((grid[:, 1], 1.0 - grid[:, 1]), axis=-1).min(axis=-1)
+        bounds = np.stack((x_bounds, y_bounds), axis=-1).min(axis=-1)
+        return bounds
 
     def get_dataset(self, data:np.ndarray, grid:np.ndarray, edges:np.ndarray, edge_features:np.ndarray):
         dataset = []
@@ -58,3 +65,19 @@ class GraphPDEDataModule(PDEDataModule):
         if(split == 'train' and self.image_size is None):
             self.image_size = grid.shape[:-1]
         return self.get_data_loader(dataset, shuffle=shuffle)
+
+
+class Dataset():
+    def __init__(self, nodes, grid, edges, edge_attrs, dist_to_boundary):
+        self.nodes = nodes
+        self.grid = grid
+        self.edges = edges
+        self.edge_attrs = edge_attrs
+        self.dist_to_boundary = dist_to_boundary
+        self.prior = np.repeat(0.25, repeats=self.nodes.shape[1])
+    def __getitem__(self, idx):
+        random = np.random.uniform(0, 1, size=self.nodes.shape[1])
+        selected_idx = np.where(random <= prior)[0]
+        
+
+

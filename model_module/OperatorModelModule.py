@@ -1,4 +1,5 @@
 import torch
+from torch.nn import MSELoss
 
 from models.operators.basic_fno import FNO2d
 from model_module.ModelModule import ModelModule

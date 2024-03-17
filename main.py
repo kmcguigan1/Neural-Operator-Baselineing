@@ -11,7 +11,9 @@ from lightning.pytorch.callbacks import Callback, EarlyStopping, ModelCheckpoint
 
 from utils.config_reader import parse_args, display_config_file, load_config
 from data_module.PDEDataModule import PDEDataModule
+from data_module.GraphPDEDataModule import GraphPDEDataModule
 from model_module.OperatorModelModule import OperatorModelModule
+from model_module.GraphOperatorModelModule import GraphOperatorModelModule
 from model_module.ModelModule import ModelModule
 from utils.eval_predictions import run_all_metrics, save_predictions
 from constants import ACCELERATOR
@@ -53,10 +55,22 @@ def run_experiment(config=None):
         # seed the environment
         seed_everything(config['SEED'], workers=True)
         # get the data that we will need to train on
-        data_module = PDEDataModule(config)
+        if(config['EXP_KIND'] in ['GNO','GKN','MGKN','GCN']):
+            data_module = GraphPDEDataModule(config)
+        elif(config['EXP_KIND'] in ['CONV_LSTM','FNO']):
+            data_module = PDEDataModule(config)
+        else:
+            raise Exception('No data module can be found')
         train_loader, val_loader = data_module.get_training_data()
         # get the model that we will be fitting
-        model = ModelModule(config, data_module.train_example_count, data_module.image_size)
+        if(config['EXP_KIND'] in ['GNO','GKN','MGKN','GCN']):
+            model = GraphOperatorModelModule(config, data_module.train_example_count, data_module.image_size)
+        elif(config['EXP_KIND'] in ['FNO',]):
+            model = OperatorModelModule(config, data_module.train_example_count, data_module.image_size)
+        elif(config['EXP_KIND'] in ['CONV_LSTM',]):
+            model = ModelModule(config, data_module.train_example_count, data_module.image_size)
+        else:
+            raise Exception('No data module can be found')
         # get the trainer that we will use to fit the model
         lightning_logger = WandbLogger(log_model=False)
         lr_monitor = LearningRateMonitor(logging_interval='epoch')
@@ -105,7 +119,7 @@ def main():
     # get the data file
     # # config['DATA_FILE'] = 'ns_V1e-3_N5000_T50.mat'
     # # config['DATA_FILE'] = 'ns_V1e-4_N10000_T30.mat'
-    # config['DATA_FILE'] = 'NavierStokes_V1e-5_N1200_T20.mat'
+    config['DATA_FILE'] = 'NavierStokes_V1e-5_N1200_T20.mat'
     # run the experiment
     run_experiment(config=config)
 

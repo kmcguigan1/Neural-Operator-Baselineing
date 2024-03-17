@@ -1,3 +1,6 @@
+import torch
+from torch_geometric.nn.conv import MessagePassing
+
 class NNConv_old(MessagePassing):
     r"""The continuous kernel-based convolutional operator from the
     `"Neural Message Passing for Quantum Chemistry"
@@ -91,19 +94,24 @@ class NNConv_old(MessagePassing):
 
 class KernelNN(torch.nn.Module):
     def __init__(self, width, ker_width, depth, ker_in, in_width=1, out_width=1):
-        super(KernelNN, self).__init__()
-        self.depth = depth
+        super().__init__()
+        self.depth = config['DEPTH']
+        self.in_dims = config['TIME_STEPS_IN'] + 2
+        self.out_dims = 1
+        self.latent_dims = config['LATENT_DIMS']
+        self.kernel_dims = config['KERNEL_DIMS']
+        self.edge_dims = 5
 
-        self.fc1 = torch.nn.Linear(in_width, width)
+        self.fc1 = torch.nn.Linear(self.in_dims, self.latent_dims)
 
-        kernel = DenseNet([ker_in, ker_width//2, ker_width, width**2], torch.nn.ReLU)
-        self.conv1 = NNConv_old(width, width, kernel, aggr='mean')
+        kernel = DenseNet([self.edge_dims, self.kernel_dims//2, self.kernel_dims, self.latent_dims**2], torch.nn.ReLU)
+        self.conv1 = NNConv_old(self.latent_dims, self.latent_dims, kernel, aggr='mean')
 
-        self.fc2 = torch.nn.Linear(width, ker_width)
-        self.fc3 = torch.nn.Linear(ker_width, 1)
+        self.fc2 = torch.nn.Linear(self.latent_dims, self.kernel_dims)
+        self.fc3 = torch.nn.Linear(self.kernel_dims, 1)
 
-    def forward(self, data):
-        x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
+    def forward(self, x, grid, edge_index, edge_attr):
+        x = torch.cat((x, grid), dim=-1)
         x = self.fc1(x)
         for k in range(self.depth):
             x = self.conv1(x, edge_index, edge_attr)

@@ -1,5 +1,4 @@
 # model information
 LATENT_DIMS: 32
-PROJ_KERNEL_SIZE: 5
 KERNEL_SIZE: 5
 DEPTH: 3

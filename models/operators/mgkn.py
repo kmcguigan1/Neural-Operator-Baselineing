@@ -1,3 +1,5 @@
+import torch
+from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.nn import GCNConv, NNConv
 
 class MKGN(torch.nn.Module):

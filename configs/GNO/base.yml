@@ -1,9 +1,10 @@
 # dataloader info
-GRAPH_DATA_LOADER: True
+# GRAPH_DATA_LOADER: True
 
 # model information
-LATENT_DIMS: 32
-NEIGHBORS: radial
-DROP_RATE: 0.2
-MLP_RATIO: 2
+LATENT_DIMS: 16
+# NEIGHBORS: radial
+# DROP_RATE: 0.2
+# MLP_RATIO: 2
 DEPTH: 2
+KERNEL_DIMS: 16

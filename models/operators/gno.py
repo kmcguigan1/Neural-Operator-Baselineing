@@ -2,9 +2,12 @@
 From the GNO paper
 """
 import torch 
+import torch.nn as nn
+import torch.nn.functional as F
 from torch.nn import Parameter
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.nn.inits import reset, uniform
+
 
 class NNConv_old(MessagePassing):
     r"""The continuous kernel-based convolutional operator from the

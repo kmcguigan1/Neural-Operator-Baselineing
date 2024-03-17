@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 import numpy as np
+import pandas as pd
 import wandb
 
 from constants import RESULTS_PATH
@@ -67,26 +68,65 @@ def generate_boundary_distance_mask(nx:int, ny:int):
     bounds = np.stack((x_bounds, y_bounds), axis=-1).min(axis=-1)
     return bounds
 
-def calculate_boundary_distance_error(forecasts:np.ndarray, actuals:np.ndarray, bounds:np.ndarray):
+def calculate_boundary_distance_error(forecasts:np.ndarray, actuals:np.ndarray, bounds:np.ndarray, split_name:str):
     # (example, dim, dim, time)
-    error = forecasts - actuals
-    error = np.sqrt(np.sum(np.square(forecasts - actuals), axis=(0,3)))
+    total_point_energy = np.sqrt(np.sum(np.square(actuals), axis=-1, keepdims=False))
+    total_error_energy = np.sqrt(np.sum(np.square(forecasts - actuals), axis=-1, keepdims=False))
+    print(total_point_energy.shape)
+    print(total_error_energy.shape)
+
+    normalized_error = total_error_energy / total_point_energy
+    print(normalized_error.shape)
+    normalized_error = normalized_error.mean(axis=0)
+    print(normalized_error.shape)
+
+    unnormalized_error = total_error_energy.mean(axis=0)
+    print(unnormalized_error.shape)
+
+    df = pd.DataFrame()
+    df['dist_to_boundary'] = bounds.flatten()
+    df['normalized_error'] = normalized_error.flatten()
+    df['error'] = unnormalized_error.flatten()
+    df = df.sort_values(by='dist_to_boundary', ascending=True)
+
+    for _, row in df.iterrows():
+        wandb.log({
+            f'{split_name}/final/relative_boundary_error': row['normalized_error'],
+            f'{split_name}/final/boundary_error': row['error'],
+            'index': row['dist_to_boundary'] 
+        })
+    
+    return 
+
+    # N = 20
+    # increment = df.shape[0] // N
+    # lower = 0
+    # for idx in range(N):
+    #     upper = lower + increment
+    #     wandb.log({
+    #         f'{split_name}/final/relative_boundary_error': df.iloc[lower:upper]['normalized_error'].mean(),
+    #         'index': idx
+    #     })
+    #     wandb.log({
+    #         f'{split_name}/final/relative_boundary_error': df.iloc[lower:upper]['error'].mean(),
+    #         'index': idx
+    #     })
+    #     lower = upper
 
 
-def get_average_position_error(forecasts:np.ndarray, actuals:np.ndarray):
-    # we need to make the error scale agnostic to have it be comparable
-    # this is fine since absolute values don't matter and its relative differences and 
-    # trends towards the boundaries we care about
-    # we will get the l2 norm for each example set
-    example_l2_norm = np.sqrt(np.sum(np.square(actuals), axis=(1,2,3)))
-    print(example_l2_norm)
-
-
-def calculate_boundary_errors(forecasts:np.array, actuals:np.array, metric_name:str, split_name:str):
-    # examples are not scale agnostic, we should get the total squared values in each example
-    # we want to normalize the error by the scale of the example that it is apart of 
-    scales = np.sqrt(np.sum(np.square(actuals), axis=()))
-    error = forecasts - actuals
+    # bound_groups = np.linspace(start=0, stop=bounds.max(), num=15)
+    # for idx in range(1, bound_groups.shape[0]):
+    #     upper_bound = bound_groups[idx]
+    #     lower_bound = bound_groups[idx - 1]
+    #     if(idx == 1):
+    #         lower_bound = -1
+    #     indecies = np.where(np.logical_and(bounds <= upper_bound, bounds > lower_bound))
+    #     print(indecies[0].shape)
+    #     wandb.log({f'{split_name}/final/boundary_dist_count': indecies[0].shape, 'index': upper_bound})
+    #     error = normalized_error[indecies[0], indecies[1]].mean()
+    #     wandb.log({f'{split_name}/final/relative_boundary_error': error, 'index': upper_bound})
+    #     error = unnormalized_error[indecies[0], indecies[1]].mean()
+    #     wandb.log({f'{split_name}/final/boundary_error': error, 'index': upper_bound})
 
 def log_single_metric(split_name, metric_name, metric_value):
     wandb.log({f'{split_name}/final/{metric_name}': metric_value})
@@ -99,7 +139,8 @@ def run_all_metrics(forecasts:np.array, actuals:np.array, split_name:str):
     # before flattening run shape dependent metrics
     # get the error as a factor of distance from the edges to see
     # the impacts of boundary conditions
-
+    bounds = generate_boundary_distance_mask(forecasts.shape[1], forecasts.shape[2])
+    calculate_boundary_distance_error(forecasts, actuals, bounds, split_name)
     # flatten the outputs
     forecasts, actuals = flatten_outputs(forecasts, actuals)
     # print the shapes
