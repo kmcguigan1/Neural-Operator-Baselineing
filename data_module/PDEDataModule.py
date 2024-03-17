@@ -22,7 +22,6 @@ class PDEDataModule(DataModule):
         data = data.astype(np.float32)
         # get the data in the shape that we want it
         data = data[..., :self.time_steps_in+self.time_steps_out]
-        data = data[:100]
         return data
 
     def get_dataset(self, data:np.ndarray, grid:np.ndarray):
@@ -34,6 +33,7 @@ class PDEDataModule(DataModule):
         data, grid = self.downsample_data(data, grid, ratio=downsample_ratio)
         data, grid = self.cut_data(data, grid)
         dataset = self.get_dataset(data, grid)
+        print(f"{split} data shape is {data.shape}")
         if(split == 'train' and self.image_size is None):
             self.image_size = dataset.image_size
         return self.get_data_loader(dataset, shuffle=shuffle)

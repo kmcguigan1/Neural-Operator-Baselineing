@@ -117,9 +117,9 @@ def main():
     config['EXP_NAME'] = args.exp_name
     config['EXP_KIND'] = args.exp_kind
     # get the data file
-    # # config['DATA_FILE'] = 'ns_V1e-3_N5000_T50.mat'
+    config['DATA_FILE'] = 'ns_V1e-3_N5000_T50.mat'
     # # config['DATA_FILE'] = 'ns_V1e-4_N10000_T30.mat'
-    config['DATA_FILE'] = 'NavierStokes_V1e-5_N1200_T20.mat'
+    # config['DATA_FILE'] = 'NavierStokes_V1e-5_N1200_T20.mat'
     # run the experiment
     run_experiment(config=config)
 
