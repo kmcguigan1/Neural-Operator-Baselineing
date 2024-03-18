@@ -75,7 +75,7 @@ class DataModule(ABC):
         return data, grid
 
     def get_data_loader(self, dataset, shuffle:bool):
-        return torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=shuffle)#, num_workers=4, persistent_workers=True)
+        return torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=shuffle, num_workers=4, persistent_workers=True)
 
     def get_training_data(self):
         # load and split the data

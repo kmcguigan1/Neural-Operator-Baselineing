@@ -75,9 +75,10 @@ class ConvLSTMModel(nn.Module):
             in_dims, out_dims = self.latent_dims, self.latent_dims
             if(idx == 0):
                 in_dims = self.in_dims
-            if(idx == self.depth - 1):
-                out_dims = self.out_dims
+            # if(idx == self.depth - 1):
+            #     out_dims = self.out_dims
             blocks.append(ConvLSTMCell(in_dims, out_dims, kernel_size=self.kernel_size, img_shape=self.img_size))
+        blocks.append(nn.Conv2d(self.latent_dims, self.out_dims, kernel_size=self.kernel_size, padding='same'))
         self.blocks = nn.ModuleList(blocks)
 
     def forward(self, x, grid):
@@ -89,7 +90,7 @@ class ConvLSTMModel(nn.Module):
         # print("Init shape: ", x.shape)
         assert H == self.img_size[0] and W == self.img_size[1]
         # setup the block states
-        for block in self.blocks:
+        for block in self.blocks[:-1]:
             block.setup_states(B, x.device)
         # warmup the lstm
         for step in range(self.input_steps-1):
