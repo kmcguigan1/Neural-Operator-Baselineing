@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 EX_IDX = 0
 
 
-with np.load(r'results/comic-durian-847-test.npz') as data:
+with np.load(r'results/glad-star-852-test.npz') as data:
     predictions = data['predictions'][EX_IDX, ...]
     actuals = data['actuals'][EX_IDX, ...]
     print(data['indecies'])
@@ -20,7 +20,7 @@ vmin = min(actuals.min(), predictions.min())
 vmax = max(actuals.max(), predictions.max())
 
 fig, axs = plt.subplots(1,3, figsize=(14,8))
-fig.suptitle('FNO Model')
+fig.suptitle('Conv LSTM Model')
 actuals_im = axs[0].imshow(actuals[..., 0], vmin=vmin, vmax=vmax, cmap='rainbow', origin="lower",)
 preds_im = axs[1].imshow(predictions[..., 0], vmin=vmin, vmax=vmax, cmap='rainbow', origin="lower",)
 error_im = axs[2].imshow(error[..., 0], vmin=vmin, vmax=vmax, cmap='rainbow', origin="lower",)
