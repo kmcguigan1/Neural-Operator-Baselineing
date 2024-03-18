@@ -9,11 +9,15 @@ EX_IDX = 0
 with np.load(r'results/comic-durian-847-test.npz') as data:
     predictions = data['predictions'][EX_IDX, ...]
     actuals = data['actuals'][EX_IDX, ...]
+    print(data['indecies'])
 
 error = predictions - actuals
 
+print(predictions.mean(), predictions.std(), predictions.min(), predictions.max())
+print(actuals.mean(), actuals.std(), actuals.min(), actuals.max())
+
 vmin = min(actuals.min(), predictions.min())
-vmax = min(actuals.max(), predictions.max())
+vmax = max(actuals.max(), predictions.max())
 
 fig, axs = plt.subplots(1,3, figsize=(14,8))
 fig.suptitle('FNO Model')
