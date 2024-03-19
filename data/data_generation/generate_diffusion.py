@@ -46,7 +46,6 @@ import multiprocessing
 from tqdm import tqdm
 
 # EXAMPLE_COUNT_PER_RUN = 1000
-# CHUNK_SIZE = 15
 
 def main(split='train'):
     with np.load('grf_initial_conditions.npz') as file_data:
@@ -59,25 +58,69 @@ def main(split='train'):
         name = 'heat_equation_non_periodic.h5'
 
     t0 = time.time()
-    with multiprocessing.Pool(processes=8) as pool:
-        results = pool.map(run, intial_conditions)
-    print(time.time() - t0)
-    
-    results = np.concatenate(results).astype(np.float32)
-    print(results.shape)
+
     with h5py.File(name, "a") as f:
-        f.create_dataset(
+        # create the dataset object
+        row_count = 0
+        dset = f.create_dataset(
             f'{split}_u', 
-            data=results, 
+            shape=(1, N_SAMPLES, *intial_conditions.shape[1:]), 
+            maxshape=(None, N_SAMPLES, *intial_conditions.shape[1:]),
+            dtype='float32',
+            chunks=(1, N_SAMPLES, *intial_conditions.shape[1:])
         )
+        # create the chunk object and the chunk indexer
+        with multiprocessing.Pool(processes=8) as pool:
+            for outputs in pool.imap(run, intial_conditions, chunksize=1):
+                if(row_count == 0):
+                    dset[:] = outputs
+                else:
+                    dset.resize(row_count + 1, axis=0)
+                    dset[row_count:] = outputs
+                row_count += 1
+        print(dset.shape)
         f.create_dataset(
             f'{split}_a', 
             data=intial_conditions, 
+            chunks=True
         )
         f.create_dataset(
             f'{split}_t', 
             data=np.array([(t + 1) * DT for t in range(N_SAMPLES)]), 
         )
+    
+    print(time.time() - t0)
+
+# def main(split='train'):
+#     with np.load('grf_initial_conditions.npz') as file_data:
+#         intial_conditions = file_data[f'{split}_conditions']
+#     print(intial_conditions.shape)
+
+#     if(PERIODIC):
+#         name = 'heat_equation_periodic.h5'
+#     else:
+#         name = 'heat_equation_non_periodic.h5'
+
+#     t0 = time.time()
+#     with multiprocessing.Pool(processes=8) as pool:
+#         results = pool.map(run, intial_conditions)
+#     print(time.time() - t0)
+    
+#     results = np.concatenate(results).astype(np.float32)
+#     print(results.shape)
+#     with h5py.File(name, "a") as f:
+#         f.create_dataset(
+#             f'{split}_u', 
+#             data=results, 
+#         )
+#         f.create_dataset(
+#             f'{split}_a', 
+#             data=intial_conditions, 
+#         )
+#         f.create_dataset(
+#             f'{split}_t', 
+#             data=np.array([(t + 1) * DT for t in range(N_SAMPLES)]), 
+#         )
 
 # def main(run_idx=0):
 #     with np.load('grf_initial_conditions.npz') as file_data:
