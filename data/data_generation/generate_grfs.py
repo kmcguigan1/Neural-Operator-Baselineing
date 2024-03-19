@@ -10,7 +10,7 @@ torch.manual_seed(1999)
 
 class GaussianRF(object):
 
-    def __init__(self, dim=2, size=128, alpha=1.5, tau=2, sigma=None, boundary="periodic", device=None):
+    def __init__(self, dim=2, size=64, alpha=1.5, tau=2, sigma=None, boundary="periodic", device=None):
 
         self.dim = dim
         self.device = device
@@ -65,9 +65,13 @@ class GaussianRF(object):
 def main():
     grf = GaussianRF()
     intial_conditions = grf.sample(5000)
+    train_split = int(intial_conditions.shape[0] * 0.7)
+    val_split = train_split + int(intial_conditions.shape[0] * 0.15)
     np.savez(
         f'grf_initial_conditions.npz',
-        intial_conditions=intial_conditions,
+        train_conditions=intial_conditions[:train_split,...],
+        val_conditions=intial_conditions[train_split:val_split,...],
+        test_conditions=intial_conditions[val_split:,...],
     )
 
     # import matplotlib.pyplot as plt
