@@ -8,7 +8,7 @@ import time
 
 DT = 0.5
 N_SAMPLES = 50
-PERIODIC = True
+PERIODIC = False
 DIFFUSIVITY = 0.5
 
 def generate_equation(intial_conditions:np.ndarray, periodic:bool=PERIODIC, diffusivity:float=DIFFUSIVITY):
@@ -45,11 +45,48 @@ def run(args):
 import multiprocessing
 from tqdm import tqdm
 
-# EXAMPLE_COUNT_PER_RUN = 1000
+EXAMPLE_COUNT_PER_RUN = 1000
 
-def main(split='train'):
+def save_stuff():
+    with np.load('grf_initial_conditions.npz') as file_data:
+        train_intial_conditions = file_data['train_conditions']
+        val_intial_conditions = file_data['val_conditions']
+        test_intial_conditions = file_data['test_conditions']
+
+    if(PERIODIC):
+        name = 'heat_equation_periodic.h5'
+    else:
+        name = 'heat_equation_non_periodic.h5'
+
+    with h5py.File(name, "a") as f:
+        f.create_dataset(
+            'train_a', 
+            data=train_intial_conditions
+        )
+        f.create_dataset(
+            'val_a', 
+            data=val_intial_conditions
+        )
+        f.create_dataset(
+            'test_a', 
+            data=test_intial_conditions
+        )
+        f.create_dataset(
+            'parameters', 
+            data=np.array([DIFFUSIVITY,])
+        )
+        f.create_dataset(
+            'timesteps', 
+            data=np.array([(t + 1) * DT for t in range(N_SAMPLES)])
+        )
+
+
+def main(split='train', run_number:int=3):
     with np.load('grf_initial_conditions.npz') as file_data:
         intial_conditions = file_data[f'{split}_conditions']
+        lower_bound = run_number * EXAMPLE_COUNT_PER_RUN
+        upper_bound = min(intial_conditions.shape[0], lower_bound + EXAMPLE_COUNT_PER_RUN)
+        intial_conditions = intial_conditions[lower_bound:upper_bound, ...]
     print(intial_conditions.shape)
 
     if(PERIODIC):
@@ -61,17 +98,21 @@ def main(split='train'):
 
     with h5py.File(name, "a") as f:
         # create the dataset object
-        row_count = 0
-        dset = f.create_dataset(
-            f'{split}_u', 
-            shape=(1, N_SAMPLES, *intial_conditions.shape[1:]), 
-            maxshape=(None, N_SAMPLES, *intial_conditions.shape[1:]),
-            dtype='float32',
-            chunks=(1, N_SAMPLES, *intial_conditions.shape[1:])
-        )
+        if(run_number == 0):
+            row_count = 0
+            dset = f.create_dataset(
+                f'{split}_u', 
+                shape=(1, N_SAMPLES, *intial_conditions.shape[1:]), 
+                maxshape=(None, N_SAMPLES, *intial_conditions.shape[1:]),
+                dtype='float32',
+                chunks=(1, N_SAMPLES, *intial_conditions.shape[1:])
+            )
+        else:
+            dset = f[f'{split}_u']
+            row_count = dset.shape[0]
         # create the chunk object and the chunk indexer
         with multiprocessing.Pool(processes=8) as pool:
-            for outputs in pool.imap(run, intial_conditions, chunksize=1):
+            for outputs in tqdm(pool.imap(run, intial_conditions, chunksize=1), total=intial_conditions.shape[0]):
                 if(row_count == 0):
                     dset[:] = outputs
                 else:
@@ -79,15 +120,15 @@ def main(split='train'):
                     dset[row_count:] = outputs
                 row_count += 1
         print(dset.shape)
-        f.create_dataset(
-            f'{split}_a', 
-            data=intial_conditions, 
-            chunks=True
-        )
-        f.create_dataset(
-            f'{split}_t', 
-            data=np.array([(t + 1) * DT for t in range(N_SAMPLES)]), 
-        )
+        # f.create_dataset(
+        #     f'{split}_a', 
+        #     data=intial_conditions, 
+        #     chunks=True
+        # )
+        # f.create_dataset(
+        #     f'{split}_t', 
+        #     data=np.array([(t + 1) * DT for t in range(N_SAMPLES)]), 
+        # )
     
     print(time.time() - t0)
 
