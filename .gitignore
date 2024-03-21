@@ -10,6 +10,7 @@ __pycache__/
 lightning_logs/**
 wandb/
 **.mat
+**.h5
 
 constants.py
 **/**.npz
