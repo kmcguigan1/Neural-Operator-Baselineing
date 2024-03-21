@@ -10,6 +10,12 @@ __pycache__/
 lightning_logs/**
 wandb/
 
+**.h5
+**.mat
+**.npy 
+**.npz
+
+
 constants.py
 **/**.npz
 # C extensions
