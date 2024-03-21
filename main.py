@@ -81,7 +81,7 @@ def run_experiment(config=None):
         # get the trainer that we will use to fit the model
         lightning_logger = WandbLogger(log_model=False)
         lr_monitor = LearningRateMonitor(logging_interval='epoch')
-        early_stopping = EarlyStopping('val/loss', patience=10)
+        early_stopping = EarlyStopping('val/loss', patience=6)
         model_checkpoint_val_loss = ModelCheckpoint(monitor="val/loss", mode="min", filename="Ep{epoch:02d}-val{val/loss:.2f}-best", auto_insert_metric_name=False, verbose=True)
         trainer = pl.Trainer(
             accelerator=ACCELERATOR,
@@ -124,7 +124,7 @@ def main():
     config['EXP_NAME'] = args.exp_name
     config['EXP_KIND'] = args.exp_kind
     # get the data file
-    config['DATA_FILE'] = 'heat_equation_periodic.h5'
+    config['DATA_FILE'] = 'heat_equation_non_periodic.h5'
     config['CUSTOM_PDE_DATASET'] = True
     # config['DATA_FILE'] = 'ns_V1e-3_N5000_T50.mat'
     # # config['DATA_FILE'] = 'ns_V1e-4_N10000_T30.mat'

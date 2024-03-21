@@ -47,5 +47,5 @@ class EfficientPDEDataModule(PDEDataModule):
         val_loader = self.pipeline(split='val', shuffle=False)
         return train_loader, val_loader
 
-    def get_testing_data(self, split:str, downsample_ratio:int=None):
-        return self.pipeline(split=split, shuffle=False, inference=True, downsample_ratio=downsample_ratio)
+    def get_testing_data(self, split:str='test', downsample_ratio:int=None):
+        return self.pipeline(split=split, shuffle=False, inference=True, downsample_ratio=downsample_ratio), None
