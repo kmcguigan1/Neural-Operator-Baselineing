@@ -9,25 +9,11 @@ from data_module.DataModule import DataModule
 class PDEDataModule(DataModule):
     def __init__(self, config:dict):
         super().__init__(config)
-    
-    def load_data(self):
-        # shape (example, dim, dim, time)
-        try:    
-            data = scipy.io.loadmat(self.data_file)['u']
-        except:
-            data = h5py.File(self.data_file)['u']
-            data = data[()]
-            data = np.transpose(data, axes=range(len(data.shape) - 1, -1, -1))
-        # make the data floats
-        data = data.astype(np.float32)
-        # get the data in the shape that we want it
-        data = data[..., :self.time_steps_in+self.time_steps_out]
-        return data
 
     def get_dataset(self, data:np.ndarray, grid:np.ndarray):
         return PDEDataset(data, grid, self.time_steps_in, self.time_steps_out)
 
-    def pipeline(self, data:np.ndarray, split:str, shuffle:bool, downsample_ratio:int=None):
+    def pipeline(self, data:np.ndarray, split:str, shuffle:bool, downsample_ratio:int=None, inference:bool=False):
         assert shuffle == True or split != 'train'
         grid = self.generate_grid(nx=data.shape[1], ny=data.shape[2])
         data, grid = self.downsample_data(data, grid, ratio=downsample_ratio)
@@ -36,7 +22,7 @@ class PDEDataModule(DataModule):
         print(f"{split} data shape is {data.shape}")
         if(split == 'train' and self.image_size is None):
             self.image_size = dataset.image_size
-        return self.get_data_loader(dataset, shuffle=shuffle)
+        return self.get_data_loader(dataset, shuffle=shuffle, inference=inference)
 
 class PDEDataset(torch.utils.data.Dataset):
     def __init__(self, data:np.ndarray, grid:np.ndarray, time_steps_in:int, time_steps_out:int):

@@ -67,17 +67,28 @@ class SampledGraphPDEDataModule(PDEDataModule):
         return self.get_data_loader(dataset, shuffle=shuffle)
 
 
-class Dataset():
-    def __init__(self, nodes, grid, edges, edge_attrs, dist_to_boundary):
+class SampledGraphPDEDataset(torch.data.utils.Dataset):
+    def __init__(self, nodes, grid, distances):
+        super().__init__()
+        # save info we need
         self.nodes = nodes
         self.grid = grid
-        self.edges = edges
-        self.edge_attrs = edge_attrs
-        self.dist_to_boundary = dist_to_boundary
-        self.prior = np.repeat(0.25, repeats=self.nodes.shape[1])
+        self.distances = distances
+        self.prior = np.repeat(1, repeats=self.nodes.shape[1])
+    def __len__(self):
+        return self.nodes.shape[0]
     def __getitem__(self, idx):
-        random = np.random.uniform(0, 1, size=self.nodes.shape[1])
+        # select the nodes to keep
+        random = np.random.uniform(0, 1, size=self.prior.shape) * self.prior
+        # keep the top M nodes in the graph
+        indecies = np.argpartition(random, -self.m)[-self.m:]
+        indecies = np.sort(indecies)
+        nodes = self.nodes[indecies]
+        grid = self.grid[indecies]
+        arr[indecies]
+        selected_indecies = np.argpartition(random, -self.m)
         selected_idx = np.where(random <= prior)[0]
+        # get the selected nodes and stuff
         
 
 
