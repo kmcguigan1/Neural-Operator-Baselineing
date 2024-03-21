@@ -2,8 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import math
+
 class SpectralConv2d(nn.Module):
-    def __init__(self, in_channels, out_channels, modes1, modes2):
+    def __init__(self, in_channels, out_channels, modes1, modes2, padding_mode=None):
         super(SpectralConv2d, self).__init__()
 
         """
@@ -14,6 +16,7 @@ class SpectralConv2d(nn.Module):
         self.out_channels = out_channels
         self.modes1 = modes1 #Number of Fourier modes to multiply, at most floor(N/2) + 1
         self.modes2 = modes2
+        self.padding_mode = padding_mode
 
         self.scale = (1 / (in_channels * out_channels))
         self.weights1 = nn.Parameter(self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
@@ -53,9 +56,9 @@ class MLP(nn.Module):
         return x
     
 class NeuralOperator(nn.Module):
-    def __init__(self, modes1, modes2, width, activation):
+    def __init__(self, modes1, modes2, width, activation, padding_mode=None):
         super(NeuralOperator, self).__init__()
-        self.conv = SpectralConv2d(width, width, modes1, modes2)
+        self.conv = SpectralConv2d(width, width, modes1, modes2, padding_mode=padding_mode)
         self.mlp = MLP(width, width, width)
         self.w = nn.Conv2d(width, width, 1)
         self.norm = nn.InstanceNorm2d(width)
@@ -84,6 +87,7 @@ class FNO2d(nn.Module):
         self.mlp_ratio = 1
         self.depth = config['DEPTH']
         self.modes = (config['MODES1'], config['MODES2'])
+        self.padding_mode = config.get('PADDING', None)
         # dropout information
         self.drop_rate = 0.0
         # setup layers
@@ -93,7 +97,7 @@ class FNO2d(nn.Module):
         activations = ['gelu' for _ in range(self.depth - 1)]
         activations.append('none')
         self.blocks = nn.ModuleList([
-            NeuralOperator(self.modes[0], self.modes[1], self.latent_dims, activation=activation) for activation in activations
+            NeuralOperator(self.modes[0], self.modes[1], self.latent_dims, activation=activation, padding_mode=padding_mode) for activation in activations
         ])
 
     def forward(self, xx, grid):
@@ -103,10 +107,16 @@ class FNO2d(nn.Module):
         # project the data
         x = self.project(x)
         x = x.permute(0, 3, 1, 2)
+        # pad the inputs if that is what we are doing
+        if(self.padding_mode == 'ONCE'):
+            padding = int(math.sqrt(x.size(-1)))
+            x = F.pad(x, [0, padding, 0, padding])
         # go thorugh the blocks
         for block in self.blocks:
             x = block(x)
         # decode the prediction
+        if(self.padding_mode == 'ONCE'):
+            x = x[..., :-padding, :-padding]
         x = self.decode(x)
         x = x.permute(0, 2, 3, 1)
         # return the predictions

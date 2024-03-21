@@ -160,6 +160,9 @@ def save_predictions(predictions:np.ndarray, actuals:np.ndarray, indecies:np.nda
     run_name = wandb.run.name
     if(len(run_name) < 2):
         run_name = datetime.now().strftime("%d-%m-%Y--%H-%M-%S")
+
+    if(indecies is None):
+        indecies = np.array([-1])
     np.savez(
         os.path.join(RESULTS_PATH, f'{run_name}-{split}.npz'),
         predictions=predictions,
