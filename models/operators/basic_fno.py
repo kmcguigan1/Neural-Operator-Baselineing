@@ -30,6 +30,13 @@ class SpectralConv2d(nn.Module):
     def forward(self, x):
         batchsize = x.shape[0]
         #Compute Fourier coeffcients up to factor of e^(- something constant)
+        if(self.padding_mode == 'EVERY_SINGLE'):
+            padding = int(math.sqrt(x.size(-1)))
+            x = F.pad(x, [0, padding, 0, padding])
+        elif(self.padding_mode == 'EVERY_DUAL'):
+            padding = int(math.sqrt(x.size(-1)) // 2)
+            x = F.pad(x, [padding, padding, padding, padding])
+            
         x_ft = torch.fft.rfft2(x)
 
         # Multiply relevant Fourier modes
@@ -41,6 +48,11 @@ class SpectralConv2d(nn.Module):
 
         #Return to physical space
         x = torch.fft.irfft2(out_ft, s=(x.size(-2), x.size(-1)))
+
+        if(self.padding_mode == 'EVERY_SINGLE'):
+            x = x[..., :-padding, :-padding]
+        elif(self.padding_mode == 'EVERY_DUAL'):
+            x = x[..., padding:-padding, padding:-padding]
         return x
 
 class MLP(nn.Module):
@@ -87,7 +99,7 @@ class FNO2d(nn.Module):
         self.mlp_ratio = 1
         self.depth = config['DEPTH']
         self.modes = (config['MODES1'], config['MODES2'])
-        self.padding_mode = config.get('PADDING', None)
+        self.padding_mode = config.get('PADDING_MODE', None)
         # dropout information
         self.drop_rate = 0.0
         # setup layers
@@ -97,7 +109,7 @@ class FNO2d(nn.Module):
         activations = ['gelu' for _ in range(self.depth - 1)]
         activations.append('none')
         self.blocks = nn.ModuleList([
-            NeuralOperator(self.modes[0], self.modes[1], self.latent_dims, activation=activation, padding_mode=padding_mode) for activation in activations
+            NeuralOperator(self.modes[0], self.modes[1], self.latent_dims, activation=activation, padding_mode=self.padding_mode) for activation in activations
         ])
 
     def forward(self, xx, grid):
@@ -108,15 +120,20 @@ class FNO2d(nn.Module):
         x = self.project(x)
         x = x.permute(0, 3, 1, 2)
         # pad the inputs if that is what we are doing
-        if(self.padding_mode == 'ONCE'):
+        if(self.padding_mode == 'ONCE_SINGLE'):
             padding = int(math.sqrt(x.size(-1)))
             x = F.pad(x, [0, padding, 0, padding])
+        elif(self.padding_mode == 'ONCE_DUAL'):
+            padding = int(math.sqrt(x.size(-1)) // 2)
+            x = F.pad(x, [padding, padding, padding, padding])
         # go thorugh the blocks
         for block in self.blocks:
             x = block(x)
         # decode the prediction
-        if(self.padding_mode == 'ONCE'):
+        if(self.padding_mode == 'ONCE_SINGLE'):
             x = x[..., :-padding, :-padding]
+        elif(self.padding_mode == 'ONCE_DUAL'):
+            x = x[..., padding:-padding, padding:-padding]
         x = self.decode(x)
         x = x.permute(0, 2, 3, 1)
         # return the predictions

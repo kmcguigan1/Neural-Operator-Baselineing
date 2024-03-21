@@ -2,6 +2,7 @@
 SEED: 1999
 # data information
 GRAPH_LOADER: False
+DATA_MODE: CUST_PDE
 TIME_STEPS_IN: 10
 TIME_STEPS_OUT: 40
 BATCH_SIZE: 20
@@ -9,7 +10,7 @@ NORMALIZATION: none
 # model information
 LOSS: MSE
 # train information
-EPOCHS: 500
+EPOCHS: 1
 LEARNING_RATE: 0.001
 OPTIMIZER: 
   KIND: adam

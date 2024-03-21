@@ -18,10 +18,13 @@ class DataModule(ABC):
             raise Exception(f"Invalid DATA_MODE of {config['DATA_MODE']}")
         # save things for our model
         self.batch_size = config['BATCH_SIZE']
+        self.time_steps_in = config['TIME_STEPS_IN']
+        self.time_steps_out = config['TIME_STEPS_OUT']
         self.downsample_ratio = config.get('DOWNSAMPLE_RATIO', 1)
         self.patch_size = config['PATCH_SIZE'] if config.get('CUT_TO_PATCH', False) else None
         self.normalizer = self.get_normalizer(config)
         self.image_size = None
+        self.train_example_count = None
 
     def get_normalizer(self, config:dict):
         if(config['NORMALIZATION'] == 'gaussian'):
@@ -71,7 +74,8 @@ class DataModule(ABC):
         return torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=shuffle, num_workers=4, persistent_workers=True)
 
     def get_training_data(self):
-        train_data, val_data, self.data_reader.get_training_data()
+        train_data, val_data = self.data_reader.get_training_data()
+        self.train_example_count = train_data.shape[0]
         train_data = self.normalizer.fit_transform(train_data)
         val_data = self.normalizer.transform(val_data)
         # get the data loaders
@@ -82,7 +86,7 @@ class DataModule(ABC):
     def get_testing_data(self, downsample_ratio:int=None):
         test_data = self.data_reader.get_testing_data()
         test_data = self.normalizer.transform(test_data)
-        return self.pipeline(self.test_data, split='test', shuffle=False, downsample_ratio=downsample_ratio, inference=True)
+        return self.pipeline(test_data, split='test', shuffle=False, downsample_ratio=downsample_ratio, inference=True)
 
     def inverse_transform(self, array:np.ndarray):
         return self.normalizer.inverse_transform(array)

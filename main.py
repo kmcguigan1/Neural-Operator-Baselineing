@@ -13,7 +13,6 @@ from utils.config_reader import parse_args, display_config_file, load_config
 # data modules
 from data_module.PDEDataModule import PDEDataModule
 from data_module.GraphPDEDataModule import GraphPDEDataModule
-from data_module.EfficientPDEDataModule import EfficientPDEDataModule
 # model modules
 from model_module.OperatorModelModule import OperatorModelModule
 from model_module.GraphOperatorModelModule import GraphOperatorModelModule
@@ -61,11 +60,8 @@ def run_experiment(config=None):
         # get the data that we will need to train on
         if(config['EXP_KIND'] in ['GNO','GKN','MGKN','GCN']):
             data_module = GraphPDEDataModule(config)
-        elif(config['EXP_KIND'] in ['CONV_LSTM','FNO']):
-            if(config.get("CUSTOM_PDE_DATASET", False) == True):
-                data_module = EfficientPDEDataModule(config)
-            else:
-                data_module = PDEDataModule(config)
+        elif(config['EXP_KIND'] in ['CONV_LSTM','FNO']):     
+            data_module = PDEDataModule(config)
         else:
             raise Exception('No data module can be found')
         train_loader, val_loader = data_module.get_training_data()
@@ -101,8 +97,8 @@ def run_experiment(config=None):
         del train_loader
         gc.collect()
         # get the testing data
-        test_loader, test_indecies = data_module.get_testing_data()
-        key_metric = evaluate_model(trainer, model, data_module, test_loader, 'test', indecies=test_indecies, save_results=True, data_file=config['DATA_FILE'])
+        test_loader = data_module.get_testing_data()
+        key_metric = evaluate_model(trainer, model, data_module, test_loader, 'test', indecies=data_module.data_reader.test_indecies, save_results=True, data_file=config['DATA_FILE'])
         del test_loader
         gc.collect()
         # predict the model
@@ -125,7 +121,6 @@ def main():
     config['EXP_KIND'] = args.exp_kind
     # get the data file
     config['DATA_FILE'] = 'heat_equation_non_periodic.h5'
-    config['CUSTOM_PDE_DATASET'] = True
     # config['DATA_FILE'] = 'ns_V1e-3_N5000_T50.mat'
     # # config['DATA_FILE'] = 'ns_V1e-4_N10000_T30.mat'
     # config['DATA_FILE'] = 'NavierStokes_V1e-5_N1200_T20.mat'

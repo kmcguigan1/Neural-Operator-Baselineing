@@ -1,10 +1,16 @@
+import os
+import numpy as np
+import scipy
+import h5py
+
+from constants import DATA_PATH
+
 class PDEDataReader(object):
     def __init__(self, config:dict):
         super().__init__()
         self.data_file = os.path.join(DATA_PATH, config['DATA_FILE'])
         self.time_steps_in = config['TIME_STEPS_IN']
         self.time_steps_out = config['TIME_STEPS_OUT']
-        self.train_example_count = None
         self.test_indecies = None
 
     def split_data(self, data:np.ndarray):
@@ -16,7 +22,6 @@ class PDEDataReader(object):
         train_data = data[:train_split, ...]
         val_data = data[train_split:val_split, ...]
         test_data = data[val_split:, ...]
-        self.train_example_count = train_data.shape[0]
         self.test_indecies = np.arange(data.shape[0])[val_split:]
         return train_data, val_data, test_data
 
