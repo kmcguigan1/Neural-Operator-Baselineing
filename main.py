@@ -26,7 +26,8 @@ torch.set_float32_matmul_precision('medium')
 
 ## WAND CONSTANTS
 ENTITY = "kmcguigan"
-PROJECT = "PDE-Operators-Baselines"
+# PROJECT = "PDE-Operators-Baselines"
+PROJECT = "DEBUG"
 
 from constants import WANDB_KEY
 wandb.login(key=WANDB_KEY, relogin=True)
@@ -58,7 +59,7 @@ def run_experiment(config=None):
         # seed the environment
         seed_everything(config['SEED'], workers=True)
         # get the data that we will need to train on
-        if(config['EXP_KIND'] in ['GNO','GKN','MGKN','GCN']):
+        if(config['EXP_KIND'] in ['GNO','GKN','MGKN','GCN','BNO']):
             data_module = GraphPDEDataModule(config)
         elif(config['EXP_KIND'] in ['CONV_LSTM','FNO']):     
             data_module = PDEDataModule(config)
@@ -66,7 +67,7 @@ def run_experiment(config=None):
             raise Exception('No data module can be found')
         train_loader, val_loader = data_module.get_training_data()
         # get the model that we will be fitting
-        if(config['EXP_KIND'] in ['GNO','GKN','MGKN','GCN']):
+        if(config['EXP_KIND'] in ['GNO','GKN','MGKN','GCN','BNO']):
             model = GraphOperatorModelModule(config, data_module.train_example_count, data_module.image_size)
         elif(config['EXP_KIND'] in ['FNO',]):
             model = OperatorModelModule(config, data_module.train_example_count, data_module.image_size)
@@ -85,7 +86,7 @@ def run_experiment(config=None):
             max_epochs=config['EPOCHS'],
             deterministic=False,
             callbacks=[early_stopping, model_checkpoint_val_loss, lr_monitor],
-            log_every_n_steps=15,
+            log_every_n_steps=1,
         )
         # fit the model on the training data
         trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
@@ -120,10 +121,10 @@ def main():
     config['EXP_NAME'] = args.exp_name
     config['EXP_KIND'] = args.exp_kind
     # get the data file
-    config['DATA_FILE'] = 'heat_equation_non_periodic.h5'
+    # config['DATA_FILE'] = 'heat_equation_non_periodic.h5'
     # config['DATA_FILE'] = 'ns_V1e-3_N5000_T50.mat'
     # # config['DATA_FILE'] = 'ns_V1e-4_N10000_T30.mat'
-    # config['DATA_FILE'] = 'NavierStokes_V1e-5_N1200_T20.mat'
+    config['DATA_FILE'] = 'NavierStokes_V1e-5_N1200_T20.mat'
     # run the experiment
     run_experiment(config=config)
 

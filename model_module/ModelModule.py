@@ -26,10 +26,10 @@ class ModelModule(pl.LightningModule):
         # summary(self.model, [(*image_size, config['TIME_STEPS_IN']), (*image_size, 2)])
 
     def run_batch(self, batch):
-        x, y, grid = batch
+        x, y, grid, image_size = batch
         preds = self.model(x, grid)
         loss = self.loss_fn(preds, y)
-        return loss, preds, y
+        return loss, preds, y, image_size
         
     def get_model(self, config:dict, image_size:tuple):
         if(config['EXP_KIND'] == 'CONV_LSTM'):
@@ -42,17 +42,17 @@ class ModelModule(pl.LightningModule):
         raise Exception(f'Invalid loss {config["LOSS"]}')
 
     def training_step(self, batch, batch_idx):
-        loss, _, _ = self.run_batch(batch)
+        loss, _, _, _ = self.run_batch(batch)
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss, _, _ = self.run_batch(batch)
+        loss, _, _, _ = self.run_batch(batch)
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
         
     def predict_step(self, batch, batch_idx):
-        _, pred, actual = self.run_batch(batch)
-        return pred, actual
+        _, pred, actual, image_size = self.run_batch(batch)
+        return pred, actual, image_size
 
     def configure_optimizers(self):
         # get the optimizer

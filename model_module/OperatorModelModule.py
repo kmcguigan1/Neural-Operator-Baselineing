@@ -23,7 +23,7 @@ class OperatorModelModule(ModelModule):
         raise Exception(f"Invalid model kind specified of {config['EXP_KIND']}")
 
     def run_batch(self, batch):
-        xx, yy, grid = batch
+        xx, yy, grid, image_size = batch
         batch_size = xx.shape[0]
         # run the model
         loss = 0

@@ -7,6 +7,20 @@ from torch_geometric.nn.inits import reset, uniform
 
 import math
 
+from einops import rearrange
+
+class MLP(nn.Module):
+    def __init__(self, in_channels, out_channels, mid_channels):
+        super(MLP, self).__init__()
+        self.mlp1 = nn.Linear(in_channels, mid_channels)
+        self.mlp2 = nn.Linear(mid_channels, out_channels)
+
+    def forward(self, x):
+        x = self.mlp1(x)
+        x = F.gelu(x)
+        x = self.mlp2(x)
+        return x
+    
 class SpectralConv2d(nn.Module):
     def __init__(self, in_channels, out_channels, modes1, modes2, padding_mode=None):
         super(SpectralConv2d, self).__init__()
@@ -33,61 +47,58 @@ class SpectralConv2d(nn.Module):
     def forward(self, x):
         batchsize = x.shape[0]
         #Compute Fourier coeffcients up to factor of e^(- something constant)
-        if(self.padding_mode == 'EVERY_SINGLE'):
-            padding = int(math.sqrt(x.size(1)))
-            x = F.pad(x, [0, padding, 0, padding, 0, 0])
-        elif(self.padding_mode == 'EVERY_DUAL'):
-            padding = int(math.sqrt(x.size(1)) // 2)
-            x = F.pad(x, [padding, padding, padding, padding, 0, 0])
-            
         x_ft = torch.fft.rfftn(x, dim=(1, 2), norm="ortho")
-
         # Multiply relevant Fourier modes
-        out_ft = torch.zeros(batchsize,  x.size(-2), x.size(-1)//2 + 1, self.out_channels, dtype=torch.cfloat, device=x.device)
+        out_ft = torch.zeros(batchsize,  x.size(1), x.size(2)//2 + 1, self.out_channels, dtype=torch.cfloat, device=x.device)
         out_ft[:, :self.modes1, :self.modes2, :] = \
             self.compl_mul2d(x_ft[:, :self.modes1, :self.modes2, :], self.weights1)
         out_ft[:, -self.modes1:, :self.modes2, :] = \
             self.compl_mul2d(x_ft[:, -self.modes1:, :self.modes2, :], self.weights2)
-
         #Return to physical space
-        x = torch.fft.irfftn(out_ft, dim=(1, 2), s=(x.size(-2), x.size(-1)), norm="ortho")
-
-        if(self.padding_mode == 'EVERY_SINGLE'):
-            x = x[:, :-padding, :-padding, :]
-        elif(self.padding_mode == 'EVERY_DUAL'):
-            x = x[:, padding:-padding, padding:-padding, :]
-        return x
-
-class MLP(nn.Module):
-    def __init__(self, in_channels, out_channels, mid_channels):
-        super(MLP, self).__init__()
-        self.mlp1 = nn.Linear(in_channels, mid_channels)
-        self.mlp2 = nn.Linear(mid_channels, out_channels)
-
-    def forward(self, x):
-        x = self.mlp1(x)
-        x = F.gelu(x)
-        x = self.mlp2(x)
+        x = torch.fft.irfftn(out_ft, dim=(1, 2), s=(x.size(1), x.size(2)), norm="ortho")
         return x
     
-class NNConv_old(MessagePassing):
-    def __init__(self, in_channels, out_channels, nn, aggr='add', root_weight=True, bias=True, **kwargs):
+class FNOBlock(nn.Module):
+    def __init__(self, modes1, modes2, latent_dims, activation='gelu'):
+        super().__init__()
+        # save the variables
+        self.modes1 = modes1
+        self.modes2 = modes2
+        self.latent_dims = latent_dims
+        # generate the layers
+        self.conv = SpectralConv2d(self.latent_dims, self.latent_dims, self.modes1, self.modes2)
+        self.mlp = MLP(self.latent_dims, self.latent_dims, self.latent_dims * 2)
+        self.w = MLP(self.latent_dims, self.latent_dims, self.latent_dims * 2)
+        self.norm = nn.LayerNorm(self.latent_dims)
+        self.activation = nn.GELU() if activation == 'gelu' else nn.Identity()
+
+    def forward(self, x):
+        # fourier branch
+        x1 = self.norm(self.conv(self.norm(x)))
+        x1 = self.mlp(x1)
+        # spatial branch
+        x2 = self.w(x)
+        # add and activate
+        x = self.activation(x1 + x2)
+        return x
+
+
+class NNConv(MessagePassing):
+    def __init__(self, in_channels, out_channels, kernel, aggr='add', activation='gelu', root_weight=True, bias=True, **kwargs):
         super().__init__(aggr=aggr, **kwargs)
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.nn = nn
+        self.kernel = kernel
         self.aggr = aggr
-
+        self.activation = nn.GELU() if activation == 'gelu' else nn.Identity()
         if root_weight:
             self.root = nn.Parameter(torch.Tensor(in_channels, out_channels))
         else:
             self.register_parameter('root', None)
-
         if bias:
             self.bias = nn.Parameter(torch.Tensor(out_channels))
         else:
             self.register_parameter('bias', None)
-
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -102,7 +113,7 @@ class NNConv_old(MessagePassing):
         return self.propagate(edge_index, x=x, pseudo=pseudo)
 
     def message(self, x_j, pseudo):
-        weight = self.nn(pseudo).view(-1, self.in_channels, self.out_channels)
+        weight = self.kernel(pseudo).view(-1, self.in_channels, self.out_channels)
         return torch.matmul(x_j.unsqueeze(1), weight).squeeze(1)
 
     def update(self, aggr_out, x):
@@ -110,8 +121,8 @@ class NNConv_old(MessagePassing):
             aggr_out = aggr_out + torch.mm(x, self.root)
         if self.bias is not None:
             aggr_out = aggr_out + self.bias
-        return aggr_out
-    
+        return self.activation(aggr_out)
+
 class DenseNet(torch.nn.Module):
     def __init__(self, layers, nonlinearity, out_nonlinearity=None, normalize=False):
         super().__init__()
@@ -133,44 +144,34 @@ class DenseNet(torch.nn.Module):
             x = l(x)
         return x
     
-class NeuralOperator(nn.Module):
-    def __init__(self, modes1, modes2, width, kernel, image_size, activation, padding_mode=None):
-        super(NeuralOperator, self).__init__()
+class GNOBlock(nn.Module):
+    def __init__(self, in_dims:int, out_dims:int, latent_dims:int, image_size:tuple, graph_passes:int, edge_dims:int, kernel_dims:int):
+        # save some variables
+        self.in_dims = in_dims
+        self.out_dims = out_dims
+        self.latent_dims = latent_dims
         self.image_size = image_size
-        # FNO branch
-        self.conv = SpectralConv2d(width, width, modes1, modes2, padding_mode=padding_mode)
-        self.w = MLP(width, width, width * 2)
-        # GNO branch
-        self.gno = NNConv_old(width, width, kernel)
-        # mlp output
-        self.mlp = MLP(width, width, width * 2)
-        # global important info
-        self.norm = nn.InstanceNorm2d(width)
-        if(activation == 'gelu'):
-            self.activation = nn.GELU()
-        elif(activation == 'none'):
-            self.activation = nn.Identity()
-        else:
-            raise Exception(f'Invalid activation specified {activation}')
+        self.graph_passes = graph_passes
+        self.edge_dims = edge_dims
+        self.kernel_dims = kernel_dims
+        # layers
+        kernel = DenseNet([self.edge_dims, self.kernel_dims, self.kernel_dims, self.latent_dims**2], torch.nn.ReLU)
+        self.blocks = nn.ModuleList()
+        for idx in range(self.graph_passes):
+            in_dims, out_dims = self.latent_dims, self.latent_dims
+            activation = 'gelu'
+            if(idx == 0):
+                in_dims = self.in_dims
+            if(idx == self.block_count - 1):
+                out_dims = self.out_dims
+                activation = 'none'
+            self.blocks.append(NNConv(in_dims, out_dims, kernel, activation=activation))
 
     def forward(self, nodes, edge_index, edge_attr):
-        B, H, W, C = nodes.shape
-        assert H == self.image_size[0] and W == self.image_size[1]
-        # FNO branch
-        x = self.norm(nodes)
-        x1 = self.conv(x)
-        x1 = self.norm(x1)
-        x1 = self.mlp(x1)
-        # plain branch
-        x2 = self.w(x)
-        x2 = self.norm(x2)
-        # GNO branch
-        x3 = x.reshape(B, H * W, C)
-        x3 = self.gno(x3, edge_index, edge_attr)
-        x = self.activation(x1 + x2 + x3)
-        return x
-    
-class FNOGNO(nn.Module):
+        for block in self.blocks:
+            nodes = block(nodes, edge_index, edge_attr)
+
+class GINO(nn.Module):
     def __init__(self, config:dict, image_size:tuple):
         super().__init__()
         # save needed vars
@@ -178,24 +179,19 @@ class FNOGNO(nn.Module):
         self.latent_dims = config['LATENT_DIMS']
         self.steps_in = config['TIME_STEPS_IN']
         self.in_dims = self.steps_in + 2
-        self.depth = config['DEPTH']
+        # fourier based information
+        self.depth = config["DEPTH"]
         self.modes = (config['MODES1'], config['MODES2'])
-        self.padding_mode = config.get('PADDING_MODE', None)
         # graph based information
+        self.graph_passes = config['GRAPH_PASSES']
         self.edge_dims = 5
         self.kernel_dims = config['KERNEL_DIMS']
-        # dropout information
-        self.drop_rate = 0.0
         # setup layers
-        self.project = MLP(self.in_dims, self.latent_dims, self.latent_dims // 2)
-        self.decode = MLP(self.latent_dims, 1, self.latent_dims // 2)
-        # add the neural operator blocks
-        kernel = DenseNet([self.edge_dims, self.kernel_dims, self.kernel_dims, self.latent_dims**2], torch.nn.ReLU)
-        activations = ['gelu' for _ in range(self.depth - 1)]
-        activations.append('none')
-        self.blocks = nn.ModuleList([
-            NeuralOperator(self.modes[0], self.modes[1], self.latent_dims, kernel, self.image_size, activation=activation, padding_mode=self.padding_mode) for activation in activations
-        ])
+        self.project = GNOBlock(self.in_dims, self.latent_dims, self.latent_dims, self.image_size, self.graph_passes, self.edge_dims, self.kernel_dims)
+        self.decode = GNOBlock(self.latent_dims, 1, self.latent_dims, self.image_size, self.graph_passes, self.edge_dims, self.kernel_dims)
+        self.fno_blocks = nn.ModuleList()
+        for idx in range(self.depth):
+            self.fno_blocks.append(FNOBlock(self.image_size, self.modes[0], self.modes[1], self.latent_dims, activation='gelu' if idx < self.depth - 1 else 'none'))
 
     def forward(self, xx, grid):
         # grid = self.get_grid(xx.shape, xx.device)
@@ -203,26 +199,14 @@ class FNOGNO(nn.Module):
         x = torch.cat((xx, grid), dim=-1)
         B, T, C = x.shape
         assert C == self.in_dims and T == self.image_size[0] * self.image_size[1]
-        # we should now make the data into a grid, we can flatten in the gno block
-        x = x.reshape(B, self.image_size[0], self.image_size[1], C)
         # project the data
         x = self.project(x)
-        # pad the inputs if that is what we are doing
-        if(self.padding_mode == 'ONCE_SINGLE'):
-            padding = int(math.sqrt(x.size(1)))
-            x = F.pad(x, [0, padding, 0, padding, 0, 0])
-        elif(self.padding_mode == 'ONCE_DUAL'):
-            padding = int(math.sqrt(x.size(1)) // 2)
-            x = F.pad(x, [padding, padding, padding, padding, 0, 0])
         # go thorugh the blocks
+        x = rearrange(x, "b (h w) c -> b h w c", b=B, c=C, h=self.image_size[0], w=self.image_size[1])
         for block in self.blocks:
             x = block(x)
+        x = rearrange(x, "b h w c -> b (h w) c", b=B, c=C, h=self.image_size[0], w=self.image_size[1])
         # decode the prediction
-        if(self.padding_mode == 'ONCE_SINGLE'):
-            x = x[:, :-padding, :-padding, :]
-        elif(self.padding_mode == 'ONCE_DUAL'):
-            x = x[:, padding:-padding, padding:-padding, :]
         x = self.decode(x)
-        x = x.reshape(B, self.image_size[0] * self.image_size[1], 1)
         # return the predictions
         return x

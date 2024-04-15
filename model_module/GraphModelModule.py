@@ -1,43 +1,22 @@
+import time
+
 import torch
-from torch_geometric.utils import dropout_edge
+from torch.nn import MSELoss
 
-from einops import rearrange
+from model_module.ModelModule import ModelModule
 
-from models.operators.gcn import GCN_Net as GCNModel
-from models.operators.gkn import KernelNN as GKNModel
-from models.operators.gno import KernelNN as GNOModel
-from models.operators.mgkn import MKGN as MKGNModel
-from models.operators.my_operator import CustomOPP
-from model_module.OperatorModelModule import OperatorModelModule
-
-class GraphOperatorModelModule(OperatorModelModule):
+class GraphModelModule(ModelModule):
     def __init__(self, config:dict, train_example_count:int, image_size:tuple):
         super().__init__(config, train_example_count, image_size)
         self.edge_drop_rate = config['EDGE_DROPOUT']
 
     def get_model(self, config:dict, image_size:tuple):
-        if(config['EXP_KIND'] == 'GNO'):
+        if(config['EXP_KIND'] == 'LATENT_BNO'):
             return GNOModel(config)
-        elif(config['EXP_KIND'] == 'BNO'):
-            return CustomOPP(config, image_size)
-        elif(config['EXP_KIND'] == 'GCN'):
-            return GCNModel(config)
-        elif(config['EXP_KIND'] == 'GKN'):
-            return GKNModel(config)
-        elif(config['EXP_KIND'] == 'MGKN'):
-            return MKGNModel(config)
         raise Exception(f"Invalid model kind specified of {config['EXP_KIND']}")
     
     def get_loss(self, config:dict):
         return None
-    
-    def predict_step(self, batch, batch_idx):
-        _, pred, actual, image_size = self.run_batch(batch)
-        batchsize = batch.ptr.size(0) - 1
-        dims = pred.size(-1)
-        pred = rearrange(pred, "(b h w) c -> b h w c", b=batchsize, h=image_size[0], w=image_size[1], c=dims)
-        actual = rearrange(actual, "(b h w) c -> b h w c", b=batchsize, h=image_size[0], w=image_size[1], c=dims)
-        return pred, actual
 
     def run_batch(self, batch):
         xx, yy, grid, edge_index, edge_attr, image_size, batch, ptr = (

@@ -41,4 +41,4 @@ class PDEDataset(torch.utils.data.Dataset):
         # get the observations
         X = self.data[idx, ..., :self.time_steps_in]
         y = self.data[idx, ...,  self.time_steps_in:self.time_steps_in+self.time_steps_out]
-        return X, y, self.grid
+        return X, y, self.grid, self.image_size

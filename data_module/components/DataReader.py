@@ -37,10 +37,12 @@ class PDEDataReader(object):
         data = data.astype(np.float32)
         # get the data in the shape that we want it
         data = data[..., :self.time_steps_in+self.time_steps_out]
+        data = data[:100, ...]
+        print(f"DATA SHAPE: {data.shape}")
         return data
     
     def get_training_data(self):
-        data = self.read_data()
+        data = self.load_data()
         train_data, val_data, self.test_data = self.split_data(data)
         return train_data, val_data
 
