@@ -5,7 +5,7 @@ import torch.nn.functional as F
 """MLP LAYERS"""
 class MLP(nn.Module):
     def __init__(self, in_channels, out_channels, mid_channels):
-        super(MLP, self).__init__()
+        super().__init__()
         self.mlp1 = nn.Linear(in_channels, mid_channels)
         self.mlp2 = nn.Linear(mid_channels, out_channels)
 
@@ -17,7 +17,7 @@ class MLP(nn.Module):
     
 class ConvMLP(nn.Module):
     def __init__(self, in_channels, out_channels, mid_channels):
-        super(MLP, self).__init__()
+        super().__init__()
         self.mlp1 = nn.Conv2d(in_channels, mid_channels, 1)
         self.mlp2 = nn.Conv2d(mid_channels, out_channels, 1)
 
@@ -103,6 +103,47 @@ class ConvLSTMCell(nn.Module):
         forget_gate = F.sigmoid(self.wxf(x) + self.whf(self.hidden_state) + self.cell_state * self.wcf)
         new_cell_state = forget_gate * self.cell_state + input_gate * F.tanh(self.wxc(x) + self.whc(self.hidden_state))
         output_gate = F.sigmoid(self.wxo(x) + self.who(self.hidden_state) + new_cell_state * self.wco)        
+        new_hidden_state = output_gate * F.tanh(new_cell_state)
+        self.update_states(new_hidden_state, new_cell_state)
+        return new_hidden_state
+    
+class FCNLSTMCell(nn.Module):
+    def __init__(self, in_dims:int, hidden_dims:int, kernel_size:int):
+        super().__init__()
+        self.in_dims = in_dims
+        self.hidden_dims = hidden_dims
+        self.kernel_size = kernel_size
+        # input gate
+        self.wxi = nn.Conv2d(in_channels=self.in_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=True)
+        self.whi = nn.Conv2d(in_channels=self.hidden_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=False)
+        self.wci = nn.Conv2d(in_channels=self.hidden_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=False)
+        # forget gate
+        self.wxf = nn.Conv2d(in_channels=self.in_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=True)
+        self.whf = nn.Conv2d(in_channels=self.hidden_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=False)
+        self.wcf = nn.Conv2d(in_channels=self.hidden_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=False)
+        # context gate
+        self.wxc = nn.Conv2d(in_channels=self.in_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=True)
+        self.whc = nn.Conv2d(in_channels=self.hidden_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=False)
+        # output gate
+        self.wxo = nn.Conv2d(in_channels=self.in_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=True)
+        self.who = nn.Conv2d(in_channels=self.hidden_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=False)
+        self.wco = nn.Conv2d(in_channels=self.hidden_dims, out_channels=self.hidden_dims, kernel_size=self.kernel_size, padding="same", bias=False)
+
+    def setup_states(self, batch_size, image_size, device):
+        self.hidden_state = torch.zeros(batch_size, self.hidden_dims, image_size[0], image_size[1], device=device)
+        self.cell_state = torch.zeros(batch_size, self.hidden_dims, image_size[0], image_size[1], device=device)
+        
+    def update_states(self, hidden_state, cell_state):
+        self.hidden_state = self.hidden_state.clone()
+        self.cell_state = self.cell_state.clone()
+        self.hidden_state = hidden_state
+        self.cell_state = cell_state
+    
+    def forward(self, x):
+        input_gate = F.sigmoid(self.wxi(x) + self.whi(self.hidden_state) + self.wci(self.cell_state))
+        forget_gate = F.sigmoid(self.wxf(x) + self.whf(self.hidden_state) + self.wcf(self.cell_state))
+        new_cell_state = forget_gate * self.cell_state + input_gate * F.tanh(self.wxc(x) + self.whc(self.hidden_state))
+        output_gate = F.sigmoid(self.wxo(x) + self.who(self.hidden_state) + self.wco(new_cell_state))        
         new_hidden_state = output_gate * F.tanh(new_cell_state)
         self.update_states(new_hidden_state, new_cell_state)
         return new_hidden_state

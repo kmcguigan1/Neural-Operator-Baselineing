@@ -32,7 +32,7 @@ class PDEDataset(torch.utils.data.Dataset):
         self.time_steps_out = time_steps_out
         self.data = data.copy().astype(np.float32)
         self.grid = grid.copy().astype(np.float32)
-        self.image_size = self.data.shape[1:-1]
+        self.image_size = np.array(self.data.shape[1:-1])
     
     def __len__(self):
         return self.data.shape[0]

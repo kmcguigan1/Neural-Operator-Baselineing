@@ -4,13 +4,12 @@ import torch.nn.functional as F
 
 from einops import rearrange
 
-from models.layers.base_layers import ConvLSTMCell
+from models.layers.base_layers import FCNLSTMCell
 
-class ConvLSTMModel(nn.Module):
-    def __init__(self, config:dict, image_size:tuple):
+class FCNLSTMModel(nn.Module):
+    def __init__(self, config:dict):
         # save needed vars
         super().__init__()
-        self.img_size = image_size
         self.latent_dims = config["LATENT_DIMS"]
         self.input_steps = config["TIME_STEPS_IN"]
         self.forecast_steps = config["TIME_STEPS_OUT"]
@@ -24,9 +23,7 @@ class ConvLSTMModel(nn.Module):
             in_dims, out_dims = self.latent_dims, self.latent_dims
             if(idx == 0):
                 in_dims = self.in_dims
-            # if(idx == self.depth - 1):
-            #     out_dims = self.out_dims
-            blocks.append(ConvLSTMCell(in_dims, out_dims, kernel_size=self.kernel_size, img_shape=self.img_size))
+            blocks.append(FCNLSTMCell(in_dims, out_dims, kernel_size=self.kernel_size))
         blocks.append(nn.Conv2d(self.latent_dims, self.out_dims, kernel_size=self.kernel_size, padding=self.kernel_size//2))
         self.blocks = nn.ModuleList(blocks)
 
@@ -37,10 +34,10 @@ class ConvLSTMModel(nn.Module):
             b=B, h=H, w=W, i=I, c=1
         )
         # print("Init shape: ", x.shape)
-        assert H == self.img_size[0] and W == self.img_size[1]
+        assert H == image_size[0] and W == image_size[1]
         # setup the block states
         for block in self.blocks[:-1]:
-            block.setup_states(B, x.device)
+            block.setup_states(B, image_size, x.device)
         # warmup the lstm
         for step in range(self.input_steps-1):
             last_step = x[:, step, ...]
@@ -49,7 +46,7 @@ class ConvLSTMModel(nn.Module):
 
         # run the conv lstm
         last_step = x[:, -1, ...]
-        predictions = torch.zeros(B, self.out_dims, self.img_size[0], self.img_size[1], self.forecast_steps, device=x.device)
+        predictions = torch.zeros(B, self.out_dims, image_size[0], image_size[1], self.forecast_steps, device=x.device)
         for step in range(self.forecast_steps):
             for block in self.blocks:
                 last_step = block(last_step)
@@ -60,13 +57,3 @@ class ConvLSTMModel(nn.Module):
             b=B, h=H, w=W, c=1, o=self.forecast_steps
         )
         return predictions
-
-if __name__ == '__main__':
-    mod = ConvLSTMModel({
-        "LATENT_DIMS": 8,
-        "TIME_STEPS_IN": 10,
-        "TIME_STEPS_OUT": 12,
-        'DEPTH': 2,
-        'KERNEL_SIZE': 5,
-    }, (32,32))
-    mod(torch.randn(2, 32, 32, 10), None)

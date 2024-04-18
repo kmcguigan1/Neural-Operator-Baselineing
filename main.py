@@ -59,19 +59,19 @@ def run_experiment(config=None):
         # seed the environment
         seed_everything(config['SEED'], workers=True)
         # get the data that we will need to train on
-        if(config['EXP_KIND'] in ['GNO','GKN','MGKN','GCN','BNO']):
+        if(config['EXP_KIND'] in ['GNO','MGKN','GCN','GFNO','GINO']):
             data_module = GraphPDEDataModule(config)
-        elif(config['EXP_KIND'] in ['CONV_LSTM','FNO']):     
+        elif(config['EXP_KIND'] in ['CONV_LSTM','FNO','CONV_FNO','FCN_LSTM']):     
             data_module = PDEDataModule(config)
         else:
             raise Exception('No data module can be found')
         train_loader, val_loader = data_module.get_training_data()
         # get the model that we will be fitting
-        if(config['EXP_KIND'] in ['GNO','GKN','MGKN','GCN','BNO']):
+        if(config['EXP_KIND'] in ['GNO','GKN','MGKN','GCN','GFNO',"GINO"]):
             model = GraphOperatorModelModule(config, data_module.train_example_count, data_module.image_size)
-        elif(config['EXP_KIND'] in ['FNO',]):
+        elif(config['EXP_KIND'] in ['FNO','CONV_FNO']):
             model = OperatorModelModule(config, data_module.train_example_count, data_module.image_size)
-        elif(config['EXP_KIND'] in ['CONV_LSTM',]):
+        elif(config['EXP_KIND'] in ['CONV_LSTM','FCN_LSTM']):
             model = ModelModule(config, data_module.train_example_count, data_module.image_size)
         else:
             raise Exception('No data module can be found')
@@ -98,8 +98,15 @@ def run_experiment(config=None):
         del train_loader
         gc.collect()
         # get the testing data
-        test_loader = data_module.get_testing_data()
-        key_metric = evaluate_model(trainer, model, data_module, test_loader, 'test', indecies=data_module.data_reader.test_indecies, save_results=True, data_file=config['DATA_FILE'])
+        if(config['EXP_KIND'] != 'CONV_LSTM'):
+            print("Running Test on 1 downsample ratio")
+            test_loader = data_module.get_testing_data(downsample_ratio=1)
+            key_metric = evaluate_model(trainer, model, data_module, test_loader, 'test_upsampled', indecies=data_module.data_reader.test_indecies, data_file=config['DATA_FILE'])
+            del test_loader
+            gc.collect()
+        print("Running Test on 2 downsample ratio")
+        test_loader = data_module.get_testing_data(downsample_ratio=2)
+        key_metric = evaluate_model(trainer, model, data_module, test_loader, 'test', indecies=data_module.data_reader.test_indecies, data_file=config['DATA_FILE'])
         del test_loader
         gc.collect()
         # predict the model

@@ -1,7 +1,8 @@
 import torch
 from torch.nn import MSELoss
 
-from models.operators.basic_fno import FNO2d
+from models.one_step.fno import FNO2d
+from models.one_step.conv_fno import ConvFNO
 from model_module.ModelModule import ModelModule
 
 class OperatorModelModule(ModelModule):
@@ -20,10 +21,28 @@ class OperatorModelModule(ModelModule):
     def get_model(self, config:dict, image_size:tuple):
         if(config['EXP_KIND'] == 'FNO'):
             return FNO2d(config)
+        elif(config['EXP_KIND'] == 'CONV_FNO'):
+            return ConvFNO(config)
         raise Exception(f"Invalid model kind specified of {config['EXP_KIND']}")
+
+    def run_inference(self, batch):
+        xx, yy, grid, image_size = batch
+        image_size = image_size[0]
+        for t in range(yy.shape[-1]):
+            # get the prediction at this stage
+            im = self.model(xx, grid)
+            # append the predictions
+            if t == 0:
+                pred = im
+            else:
+                pred = torch.cat((pred, im), -1)
+            # update the current observed values
+            xx = torch.cat((xx[..., 1:], im), dim=-1)
+        return pred, yy, image_size 
 
     def run_batch(self, batch):
         xx, yy, grid, image_size = batch
+        image_size = image_size[0]
         batch_size = xx.shape[0]
         # run the model
         loss = 0
@@ -40,7 +59,7 @@ class OperatorModelModule(ModelModule):
             # calculate the loss function
             y = yy[..., t:t + 1]
             loss += self.loss_fn(im.reshape(batch_size, -1), y.reshape(batch_size, -1))
-        return loss, pred, yy
+        return loss
 
 """
 Losses for the models to use
@@ -72,8 +91,26 @@ class LpLoss(object):
                 return torch.sum(all_norms)
 
         return all_norms
-
+    
     def rel(self, x, y):
+        B1, C1 = x.shape
+        B2, C2 = y.shape
+        assert B1 == B2 and C1 == C2
+        diff_norms = torch.norm(x - y, self.p, 1)
+        y_norms = torch.norm(y, self.p, 1)
+
+        if self.reduction:
+            if self.size_average:
+                return torch.mean(diff_norms/y_norms)
+            else:
+                return torch.sum(diff_norms/y_norms)
+
+        return diff_norms/y_norms
+
+    def rel_old(self, x, y):
+        B1, C1 = x.shape
+        B2, C2 = y.shape
+        assert B1 == B2 and C1 == C2
         num_examples = x.size()[0]
 
         diff_norms = torch.norm(x.reshape(num_examples,-1) - y.reshape(num_examples,-1), self.p, 1)
@@ -89,3 +126,11 @@ class LpLoss(object):
 
     def __call__(self, x, y):
         return self.rel(x, y)
+
+class NormError(object):
+    def __init__(self):
+        super().__init__()
+
+    def __call__(self, x, y):
+        return torch.norm(x.view(-1) - y.view(-1), 1)
+        

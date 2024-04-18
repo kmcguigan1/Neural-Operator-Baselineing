@@ -4,7 +4,8 @@ import torch
 from torch.nn import MSELoss
 import lightning.pytorch as pl
 
-from models.basic.conv_lstm import ConvLSTMModel
+from models.multi_step.conv_lstm import ConvLSTMModel
+from models.multi_step.fcn_lstm import FCNLSTMModel
 
 class ModelModule(pl.LightningModule):
     def __init__(self, config:dict, train_example_count:int, image_size:tuple):
@@ -25,15 +26,24 @@ class ModelModule(pl.LightningModule):
         # print the model summary
         # summary(self.model, [(*image_size, config['TIME_STEPS_IN']), (*image_size, 2)])
 
+    def run_inference(self, batch):
+        x, y, grid, image_size = batch
+        image_size = image_size[0]
+        preds = self.model(x, grid, image_size)
+        return preds, y, image_size
+    
     def run_batch(self, batch):
         x, y, grid, image_size = batch
-        preds = self.model(x, grid)
+        image_size = image_size[0]
+        preds = self.model(x, grid, image_size)
         loss = self.loss_fn(preds, y)
-        return loss, preds, y, image_size
+        return loss
         
     def get_model(self, config:dict, image_size:tuple):
         if(config['EXP_KIND'] == 'CONV_LSTM'):
             return ConvLSTMModel(config, image_size)
+        elif(config['EXP_KIND'] == 'FCN_LSTM'):
+            return FCNLSTMModel(config)
         raise Exception(f"Invalid model kind specified of {config['EXP_KIND']}")
     
     def get_loss(self, config:dict):
@@ -42,17 +52,17 @@ class ModelModule(pl.LightningModule):
         raise Exception(f'Invalid loss {config["LOSS"]}')
 
     def training_step(self, batch, batch_idx):
-        loss, _, _, _ = self.run_batch(batch)
+        loss = self.run_batch(batch)
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss, _, _, _ = self.run_batch(batch)
+        loss = self.run_batch(batch)
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
         
     def predict_step(self, batch, batch_idx):
-        _, pred, actual, image_size = self.run_batch(batch)
-        return pred, actual, image_size
+        pred, actual, image_size = self.run_inference(batch)
+        return pred, actual
 
     def configure_optimizers(self):
         # get the optimizer

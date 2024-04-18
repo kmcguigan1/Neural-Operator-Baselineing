@@ -35,7 +35,7 @@ class GraphPDEDataModule(PDEDataModule):
                 edge_index=torch.tensor(edges, dtype=torch.int64),
                 edge_attr=torch.tensor(edge_features, dtype=torch.float32),
                 grid=torch.tensor(grid, dtype=torch.float32),
-                image_size=torch.tensor(image_size)
+                image_size=torch.tensor(image_size, dtype=torch.int16)
             ))
         return dataset
 

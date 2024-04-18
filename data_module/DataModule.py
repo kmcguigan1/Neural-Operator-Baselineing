@@ -20,7 +20,7 @@ class DataModule(ABC):
         self.batch_size = config['BATCH_SIZE']
         self.time_steps_in = config['TIME_STEPS_IN']
         self.time_steps_out = config['TIME_STEPS_OUT']
-        self.downsample_ratio = config.get('DOWNSAMPLE_RATIO', 1)
+        self.downsample_ratio = 2
         self.patch_size = config['PATCH_SIZE'] if config.get('CUT_TO_PATCH', False) else None
         self.normalizer = self.get_normalizer(config)
         self.image_size = None
