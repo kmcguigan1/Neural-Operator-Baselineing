@@ -67,8 +67,12 @@ class FNOBlockWithW(nn.Module):
         self.padding_mode = padding_mode
         # generate the layers
         self.conv = SpectralConv2d(self.latent_dims, self.latent_dims, self.modes1, self.modes2, padding_mode=self.padding_mode)
-        self.mlp = ConvMLP(self.latent_dims, self.latent_dims, self.latent_dims * self.mlp_ratio)
-        self.w = ConvMLP(self.latent_dims, self.latent_dims, self.latent_dims * self.mlp_ratio)
+        if(self.mlp_ratio is not None):
+            self.mlp = ConvMLP(self.latent_dims, self.latent_dims, self.latent_dims * self.mlp_ratio)
+            self.w = ConvMLP(self.latent_dims, self.latent_dims, self.latent_dims * self.mlp_ratio)
+        else:
+            self.mlp = nn.Conv2d(self.latent_dims, self.latent_dims, 1)
+            self.w = nn.Conv2d(self.latent_dims, self.latent_dims, 1)
         self.norm = nn.InstanceNorm2d(self.latent_dims)
 
     def forward(self, x):
@@ -91,7 +95,10 @@ class FNOBlock(nn.Module):
         self.padding_mode = padding_mode
         # generate the layers
         self.conv = SpectralConv2d(self.latent_dims, self.latent_dims, self.modes1, self.modes2, padding_mode=self.padding_mode)
-        self.mlp = ConvMLP(self.latent_dims, self.latent_dims, self.latent_dims * self.mlp_ratio)
+        if(self.mlp_ratio is not None):
+            self.mlp = ConvMLP(self.latent_dims, self.latent_dims, self.latent_dims * self.mlp_ratio)
+        else:
+            self.mlp = nn.Conv2d(self.latent_dims, self.latent_dims, 1)
         self.norm = nn.InstanceNorm2d(self.latent_dims)
 
     def forward(self, x):
@@ -111,7 +118,10 @@ class TokenFNOBranch(nn.Module):
         self.padding_mode = padding_mode
         # generate the layers
         self.conv = SpectralConv2d(self.latent_dims, self.latent_dims, self.modes1, self.modes2, padding_mode=self.padding_mode)
-        self.mlp = ConvMLP(self.latent_dims, self.latent_dims, self.latent_dims * self.mlp_ratio)
+        if(self.mlp_ratio is not None):
+            self.mlp = ConvMLP(self.latent_dims, self.latent_dims, self.latent_dims * self.mlp_ratio)
+        else:
+            self.mlp = nn.Conv2d(self.latent_dims, self.latent_dims, 1)    
         self.norm = nn.InstanceNorm2d(self.latent_dims)
 
     def forward(self, x, image_size, batch_size):
