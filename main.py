@@ -21,9 +21,6 @@ from model_module.ModelModule import ModelModule
 from utils.eval_predictions import run_all_metrics, save_predictions
 from constants import ACCELERATOR
 
-import torch
-torch.set_float32_matmul_precision('medium')
-
 ## WAND CONSTANTS
 ENTITY = "kmcguigan"
 PROJECT = "NIPS-24-GFNO"
