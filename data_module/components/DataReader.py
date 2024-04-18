@@ -57,6 +57,7 @@ class CustomPDEDataReader(PDEDataReader):
         with h5py.File(self.data_file, "r") as f:
             data = f[f'{split}_u'][:]
         data = np.transpose(data, axes=(0,2,3,1))
+        data = data[:100, ...]
         data = data[..., :self.time_steps_in+self.time_steps_out]
         return data
 

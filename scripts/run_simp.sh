@@ -39,7 +39,7 @@ expName=${2:-None}
 echo "experiment kind $expKind"
 echo "experiment name $expName"
 
-echo "Running wandb offline"
+wandb online
 python main.py --exp-kind=$expKind --exp-name=$expName --run-wandb
 
 echo "Finished running"

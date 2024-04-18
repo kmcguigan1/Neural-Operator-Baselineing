@@ -39,6 +39,8 @@ class OperatorModelModule(ModelModule):
             xx = torch.cat((xx[..., 1:], im), dim=-1)
             # calculate the loss function
             y = yy[..., t:t + 1]
+            print(im.shape, y.shape)
+            print(self.loss_fn(im.reshape(batch_size, -1), y.reshape(batch_size, -1)).shape)
             loss += self.loss_fn(im.reshape(batch_size, -1), y.reshape(batch_size, -1))
         return loss, pred, yy
 

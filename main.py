@@ -22,7 +22,7 @@ from utils.eval_predictions import run_all_metrics, save_predictions
 from constants import ACCELERATOR
 
 import torch
-torch.set_float32_matmul_precision('medium')
+# torch.set_float32_matmul_precision('medium')
 
 ## WAND CONSTANTS
 ENTITY = "kmcguigan"
@@ -85,7 +85,7 @@ def run_experiment(config=None):
             max_epochs=config['EPOCHS'],
             deterministic=False,
             callbacks=[early_stopping, model_checkpoint_val_loss, lr_monitor],
-            log_every_n_steps=15,
+            log_every_n_steps=1 #15,
         )
         # fit the model on the training data
         trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)

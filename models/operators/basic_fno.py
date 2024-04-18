@@ -30,12 +30,12 @@ class SpectralConv2d(nn.Module):
     def forward(self, x):
         batchsize = x.shape[0]
         #Compute Fourier coeffcients up to factor of e^(- something constant)
-        if(self.padding_mode == 'EVERY_SINGLE'):
-            padding = int(math.sqrt(x.size(-1)))
-            x = F.pad(x, [0, padding, 0, padding])
-        elif(self.padding_mode == 'EVERY_DUAL'):
-            padding = int(math.sqrt(x.size(-1)) // 2)
-            x = F.pad(x, [padding, padding, padding, padding])
+        # if(self.padding_mode == 'EVERY_SINGLE'):
+        #     padding = 8 #int(math.sqrt(x.size(-1)))
+        #     x = F.pad(x, [0, padding, 0, padding])
+        # elif(self.padding_mode == 'EVERY_DUAL'):
+        #     padding = 4 #int(math.sqrt(x.size(-1)) // 2)
+        #     x = F.pad(x, [padding, padding, padding, padding])
             
         x_ft = torch.fft.rfft2(x)
 
@@ -49,10 +49,10 @@ class SpectralConv2d(nn.Module):
         #Return to physical space
         x = torch.fft.irfft2(out_ft, s=(x.size(-2), x.size(-1)))
 
-        if(self.padding_mode == 'EVERY_SINGLE'):
-            x = x[..., :-padding, :-padding]
-        elif(self.padding_mode == 'EVERY_DUAL'):
-            x = x[..., padding:-padding, padding:-padding]
+        # if(self.padding_mode == 'EVERY_SINGLE'):
+        #     x = x[..., :-padding, :-padding]
+        # elif(self.padding_mode == 'EVERY_DUAL'):
+        #     x = x[..., padding:-padding, padding:-padding]
         return x
 
 class MLP(nn.Module):
@@ -82,8 +82,8 @@ class NeuralOperator(nn.Module):
             raise Exception(f'Invalid activation specified {activation}')
 
     def forward(self, x):
-        x1 = self.norm(self.conv(self.norm(x)))
-        x1 = self.mlp(x1)
+        # x1 = self.norm(self.conv(self.norm(x)))
+        x1 = self.mlp(x)
         x2 = self.w(x)
         x = self.activation(x1 + x2)
         return x
@@ -108,6 +108,7 @@ class FNO2d(nn.Module):
         # add the neural operator blocks
         activations = ['gelu' for _ in range(self.depth - 1)]
         activations.append('none')
+        print(activations)
         self.blocks = nn.ModuleList([
             NeuralOperator(self.modes[0], self.modes[1], self.latent_dims, activation=activation, padding_mode=self.padding_mode) for activation in activations
         ])
@@ -119,21 +120,28 @@ class FNO2d(nn.Module):
         # project the data
         x = self.project(x)
         x = x.permute(0, 3, 1, 2)
+        print("==========")
+        print(x.shape)
         # pad the inputs if that is what we are doing
-        if(self.padding_mode == 'ONCE_SINGLE'):
-            padding = int(math.sqrt(x.size(-1)))
-            x = F.pad(x, [0, padding, 0, padding])
-        elif(self.padding_mode == 'ONCE_DUAL'):
-            padding = int(math.sqrt(x.size(-1)) // 2)
-            x = F.pad(x, [padding, padding, padding, padding])
+        # if(self.padding_mode == 'ONCE_SINGLE'):
+        #     padding = 8 #int(math.sqrt(x.size(-1)))
+        #     x = F.pad(x, [0, padding, 0, padding])
+        # elif(self.padding_mode == 'ONCE_DUAL'):
+        #     padding = 4 #int(math.sqrt(x.size(-1)) // 2)
+        #     x = F.pad(x, [padding, padding, padding, padding])
+        print(x.shape)
+        print(x[0, 0, :5, :5])
+        print(x[0, 0, -5:, -5:])
         # go thorugh the blocks
         for block in self.blocks:
             x = block(x)
         # decode the prediction
-        if(self.padding_mode == 'ONCE_SINGLE'):
-            x = x[..., :-padding, :-padding]
-        elif(self.padding_mode == 'ONCE_DUAL'):
-            x = x[..., padding:-padding, padding:-padding]
+        print(x.shape)
+        # if(self.padding_mode == 'ONCE_SINGLE'):
+        #     x = x[..., :-padding, :-padding]
+        # elif(self.padding_mode == 'ONCE_DUAL'):
+        #     x = x[..., padding:-padding, padding:-padding]
+        print(x.shape)
         x = self.decode(x)
         x = x.permute(0, 2, 3, 1)
         # return the predictions

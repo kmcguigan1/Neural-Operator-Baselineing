@@ -70,8 +70,8 @@ class DataModule(ABC):
 
     def get_data_loader(self, dataset, shuffle:bool, inference:bool=False):
         if(inference):
-            return torch.utils.data.DataLoader(dataset, batch_size=self.batch_size*4, shuffle=False, num_workers=4, persistent_workers=False)
-        return torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=shuffle, num_workers=4, persistent_workers=True)
+            return torch.utils.data.DataLoader(dataset, batch_size=self.batch_size*4, shuffle=False)#, num_workers=4, persistent_workers=False)
+        return torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=shuffle)#, num_workers=4, persistent_workers=True)
 
     def get_training_data(self):
         train_data, val_data = self.data_reader.get_training_data()
