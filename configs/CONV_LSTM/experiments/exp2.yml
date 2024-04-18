@@ -1,2 +1,4 @@
-DATA_FILE: ns_V1e-4_N10000_T30.mat
-TIME_STEPS_OUT: 20
+# model information
+LATENT_DIMS: 32
+KERNEL_SIZE: 3
+DEPTH: 6

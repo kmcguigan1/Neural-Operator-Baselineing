@@ -1,2 +1,4 @@
-DATA_FILE: 'ns_V1e-3_N5000_T50.mat'
-TIME_STEPS_OUT: 40
+# model information
+LATENT_DIMS: 32
+KERNEL_SIZE: 3
+DEPTH: 4
