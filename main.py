@@ -26,7 +26,7 @@ torch.set_float32_matmul_precision('medium')
 
 ## WAND CONSTANTS
 ENTITY = "kmcguigan"
-PROJECT = "PDE-Operators-Baselines"
+PROJECT = "NIPS-24-GFNO"
 # PROJECT = "DEBUG"
 
 from constants import WANDB_KEY
