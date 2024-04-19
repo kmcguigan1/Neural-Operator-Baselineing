@@ -55,18 +55,6 @@ class NNConvEdges(NNConv):
         pseudo = torch.cat((pseudo, x_i, x_j), dim=-1)
         weight = self.kernel(pseudo).view(-1, self.in_channels, self.out_channels)
         return torch.matmul(x_j.unsqueeze(1), weight).squeeze(1)
-    
-class NNConvInitEdges(NNConv):
-    def __init__(self, in_channels, out_channels, kernel, aggr='mean', root_weight=True, bias=True, **kwargs):
-        super().__init__(in_channels, out_channels, kernel, aggr=aggr, root_weight=root_weight, bias=bias, **kwargs)
-    
-    def forward(self, x, edge_index, edge_attr, a):
-        return self.propagate(edge_index, x=x, pseudo=edge_attr, a=a) 
-    
-    def message(self, x_j, pseudo, a_i, a_j):
-        pseudo = torch.cat((pseudo, a_i, a_j), dim=-1)
-        weight = self.kernel(pseudo).view(-1, self.in_channels, self.out_channels)
-        return torch.matmul(x_j.unsqueeze(1), weight).squeeze(1)
 
 class DenseNet(torch.nn.Module):
     def __init__(self, layers, nonlinearity, out_nonlinearity=None, normalize=False):
@@ -131,19 +119,6 @@ class GNOBlockSingleConvAddNodesToEdge(GNOBlockSigleConvBase):
                 nodes = self.activation(nodes)
         return nodes
     
-class GNOBlockSingleConvAddInitNodesToEdge(GNOBlockSigleConvBase):
-    def __init__(self, in_dims:int, out_dims:int, kernel_dims:int, edge_dims:int, depth:int):
-        super().__init__(in_dims, out_dims, kernel_dims, edge_dims, depth)
-        kernel = DenseNet([self.edge_dims, self.kernel_dims, self.kernel_dims, self.latent_dims**2], torch.nn.GELU)
-        self.conv = NNConvInitEdges(self.latent_dims, self.latent_dims, kernel)
-
-    def forward(self, nodes, edge_index, edge_attr, a):
-        for idx in range(self.depth):
-            nodes = self.conv(nodes, edge_index, edge_attr, a=a)
-            if(idx < self.depth - 1):
-                nodes = self.activation(nodes)
-        return nodes
-    
 """MULTI CONV GNO BLOCKS"""
 class GNOBlockBase(nn.Module):
     def __init__(self, in_dims:int, out_dims:int, kernel_dims:int, edge_dims:int, depth:int):
@@ -198,22 +173,12 @@ class GNOBlockAddNodesToEdge(GNOBlockBase):
                 nodes = self.activation(nodes)
         return nodes
     
-class GNOBlockAddInitNodesToEdge(GNOBlockBase):
-    def __init__(self, in_dims:int, out_dims:int, kernel_dims:int, edge_dims:int, depth:int):
-        super().__init__(in_dims, out_dims, kernel_dims, edge_dims, depth)
-        assert self.in_dims == self.out_dims or self.depth == 1
-        kernel = DenseNet([self.edge_dims, self.kernel_dims, self.kernel_dims, self.in_dims*self.out_dims], torch.nn.ReLU)
-        self.blocks = nn.ModuleList()
-        for idx in range(self.depth):
-            if(idx == 0):
-                in_dims = self.in_dims
-            else:
-                in_dims = self.out_dims
-            self.blocks.append(NNConvInitEdges(in_dims, self.out_dims, kernel))
+"""Utilities"""
+class CombineInitAndEdges(nn.Module):
+    def __init__(self):
+        super().__init__()
 
-    def forward(self, nodes, edge_index, edge_attr, a=None):
-        for idx, block in enumerate(self.blocks):
-            nodes = block(nodes, edge_index, edge_attr, a=a)
-            if(idx < len(self.blocks) - 1):
-                nodes = self.activation(nodes)
-        return nodes
+    def forward(self, edge_index, edge_attr, init):
+        src = init[edge_index[0], ...]
+        dst = init[edge_index[1], ...]
+        return torch.cat((edge_attr, src, dst), dim=-1)
