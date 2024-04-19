@@ -66,8 +66,8 @@ class GNO(torch.nn.Module):
         # check if we save the init data
         init = None
         if(self.add_init_to_edge):
-            # init = nodes[..., -1:].clone()
-            init = nodes.clone()
+            init = nodes[..., -1:].clone()
+            # init = nodes.clone()
         
         # project the data
         nodes = torch.cat((nodes, grid), dim=-1)
