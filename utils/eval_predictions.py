@@ -136,6 +136,10 @@ def log_step_metric(split_name, metric_name, metric_values):
         wandb.log({f'{split_name}/final/{metric_name}': metric_values[step], 'index': step})
 
 def run_all_metrics(forecasts:np.array, actuals:np.array, split_name:str):
+    # print the shapes
+    print(f"forecasts: {forecasts.shape} actuals {actuals.shape}")
+    print(f"Forecasts Data mean {forecasts.mean():.4f} var {forecasts.std():.4f} min {forecasts.min():.4f} max {forecasts.max():.4f}")
+    print(f"Actuals Data mean {actuals.mean():.4f} var {actuals.std():.4f} min {actuals.min():.4f} max {actuals.max():.4f}")
     # before flattening run shape dependent metrics
     # get the error as a factor of distance from the edges to see
     # the impacts of boundary conditions
@@ -143,10 +147,6 @@ def run_all_metrics(forecasts:np.array, actuals:np.array, split_name:str):
     calculate_boundary_distance_error(forecasts, actuals, bounds, split_name)
     # flatten the outputs
     forecasts, actuals = flatten_outputs(forecasts, actuals)
-    # print the shapes
-    print(f"forecasts: {forecasts.shape} actuals {actuals.shape}")
-    print(f"Forecasts Data mean {forecasts.mean():.4f} var {forecasts.std():.4f} min {forecasts.min():.4f} max {forecasts.max():.4f}")
-    print(f"Actuals Data mean {actuals.mean():.4f} var {actuals.std():.4f} min {actuals.min():.4f} max {actuals.max():.4f}")
     # do all the simple metrics on the model predictions
     mean_abs_error = calculate_mean_absolute_error(forecasts, actuals, 'mean_absolute_error', split_name)
     calculate_mean_squared_error(forecasts, actuals, 'mean_squared_error', split_name)

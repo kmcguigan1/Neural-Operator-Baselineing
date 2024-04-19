@@ -27,7 +27,7 @@ class GNO(torch.nn.Module):
         # check that we only pick one edge thing
         assert (self.add_nodes_to_edge and self.add_init_to_edge) == False
         if(self.add_init_to_edge):
-            self.edge_dims += 2
+            self.edge_dims += 2 * self.steps_in
         # create the layers
         self.projector = MLP(self.in_dims, self.latent_dims, self.latent_dims // 2)
         self.decoder = MLP(self.latent_dims, 1, self.latent_dims // 2)
@@ -36,30 +36,38 @@ class GNO(torch.nn.Module):
             if(self.add_nodes_to_edge):
                 gno_block_class = GNOBlockSingleConvAddNodesToEdge
             elif(self.add_init_to_edge):
-                self.gno_block_class = GNOBlockSingleConvAddInitNodesToEdge
+                gno_block_class = GNOBlockSingleConvAddInitNodesToEdge
             else:
                 gno_block_class = GNOBlockSingleConv
         else:
             if(self.add_nodes_to_edge):
                 gno_block_class = GNOBlockAddNodesToEdge
             elif(self.add_init_to_edge):
-                self.gno_block_class = GNOBlockAddInitNodesToEdge
+                gno_block_class = GNOBlockAddInitNodesToEdge
             else:
                 gno_block_class = GNOBlock
 
-        self.blocks = nn.ModuleList([gno_block_class(
-            self.latent_dims, 
-            self.latent_dims, 
-            self.kernel_dims, 
-            self.edge_dims, 
-            self.graph_passes
-        ) for _ in range(self.depth)])
+        print(gno_block_class)
+
+        self.blocks = nn.ModuleList()
+        for _ in range(self.depth):
+            self.blocks.append(
+                gno_block_class(
+                    in_dims=self.latent_dims, 
+                    out_dims=self.latent_dims, 
+                    kernel_dims=self.kernel_dims, 
+                    edge_dims=self.edge_dims, 
+                    depth=self.graph_passes
+                )
+            )
+        
 
     def forward(self, nodes, grid, edge_index, edge_attr, batch_size, image_size):
         # check if we save the init data
         init = None
         if(self.add_init_to_edge):
-            init = nodes[..., -1:].clone()
+            # init = nodes[..., -1:].clone()
+            init = nodes.clone()
         
         # project the data
         nodes = torch.cat((nodes, grid), dim=-1)

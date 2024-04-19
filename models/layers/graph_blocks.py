@@ -8,7 +8,7 @@ from torch_geometric.nn.inits import reset, uniform
 from einops import rearrange
 
 class NNConv(MessagePassing):
-    def __init__(self, in_channels, out_channels, kernel, aggr='add', root_weight=True, bias=True, **kwargs):
+    def __init__(self, in_channels, out_channels, kernel, aggr='mean', root_weight=True, bias=True, **kwargs):
         super().__init__(aggr=aggr, **kwargs)
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -45,7 +45,7 @@ class NNConv(MessagePassing):
         return aggr_out
 
 class NNConvEdges(NNConv):
-    def __init__(self, in_channels, out_channels, kernel, aggr='add', root_weight=True, bias=True, **kwargs):
+    def __init__(self, in_channels, out_channels, kernel, aggr='mean', root_weight=True, bias=True, **kwargs):
         super().__init__(in_channels, out_channels, kernel, aggr=aggr, root_weight=root_weight, bias=bias, **kwargs)
     
     def forward(self, x, edge_index, edge_attr, a=None):
@@ -57,7 +57,7 @@ class NNConvEdges(NNConv):
         return torch.matmul(x_j.unsqueeze(1), weight).squeeze(1)
     
 class NNConvInitEdges(NNConv):
-    def __init__(self, in_channels, out_channels, kernel, aggr='add', root_weight=True, bias=True, **kwargs):
+    def __init__(self, in_channels, out_channels, kernel, aggr='mean', root_weight=True, bias=True, **kwargs):
         super().__init__(in_channels, out_channels, kernel, aggr=aggr, root_weight=root_weight, bias=bias, **kwargs)
     
     def forward(self, x, edge_index, edge_attr, a):
@@ -177,7 +177,7 @@ class GNOBlock(GNOBlockBase):
                 nodes = self.activation(nodes)
         return nodes
     
-class GNOBlockAddNodesToEdge(nn.Module):
+class GNOBlockAddNodesToEdge(GNOBlockBase):
     def __init__(self, in_dims:int, out_dims:int, kernel_dims:int, edge_dims:int, depth:int):
         super().__init__(in_dims, out_dims, kernel_dims, edge_dims, depth)
         assert self.in_dims == self.out_dims or self.depth == 1
@@ -198,7 +198,7 @@ class GNOBlockAddNodesToEdge(nn.Module):
                 nodes = self.activation(nodes)
         return nodes
     
-class GNOBlockAddInitNodesToEdge(nn.Module):
+class GNOBlockAddInitNodesToEdge(GNOBlockBase):
     def __init__(self, in_dims:int, out_dims:int, kernel_dims:int, edge_dims:int, depth:int):
         super().__init__(in_dims, out_dims, kernel_dims, edge_dims, depth)
         assert self.in_dims == self.out_dims or self.depth == 1
