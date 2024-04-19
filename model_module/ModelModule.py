@@ -67,7 +67,7 @@ class ModelModule(pl.LightningModule):
     def configure_optimizers(self):
         # get the optimizer
         if(self.optimizer_params['KIND'] == 'adam'):
-            optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=1e-4)
+            optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
         else:
             raise Exception(f"Invalid optimizer specified of {self.optimizer_params['KIND']}")
         # get the scheduler

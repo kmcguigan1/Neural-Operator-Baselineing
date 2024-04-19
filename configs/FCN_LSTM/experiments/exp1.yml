@@ -1,0 +1,4 @@
+# model information
+LATENT_DIMS: 32
+KERNEL_SIZE: 3
+DEPTH: 4
