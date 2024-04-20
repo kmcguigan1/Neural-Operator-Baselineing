@@ -16,7 +16,7 @@ class BoundaryGraphPDEDataModule(GraphPDEDataModule):
         
     def generate_edge_info(self, grid:np.ndarray):
         # boundary mask
-        boundary_mask = np.zeros(grid.shape[0], grid.shape[1])
+        boundary_mask = np.zeros((grid.shape[0], grid.shape[1]))
         boundary_mask[0, :] = 1
         boundary_mask[-1, :] = 1
         boundary_mask[:, 0] = 1
@@ -51,3 +51,17 @@ class BoundaryGraphPDEDataModule(GraphPDEDataModule):
                 edge_attr=torch.tensor(edge_features[0], dtype=torch.float32),
             ))
         return dataset
+    
+    def pipeline(self, data:np.ndarray, split:str, shuffle:bool, downsample_ratio:int=None, inference:bool=False):
+        assert shuffle == True or split != 'train'
+        grid = self.generate_grid(nx=data.shape[1], ny=data.shape[2])
+        data, grid = self.downsample_data(data, grid, ratio=downsample_ratio)
+        data, grid = self.cut_data(data, grid)
+        image_size = grid.shape[:-1]
+        if(split == 'train' and self.image_size is None):
+            self.image_size = image_size
+        print("grid shape ", grid.shape)
+        edges, edge_features = self.generate_edge_info(grid)
+        data, grid = self.flatten_nodes(data, grid)
+        dataset = self.get_dataset(data, grid, edges, edge_features, image_size)
+        return self.get_data_loader(dataset, shuffle=shuffle, inference=inference)

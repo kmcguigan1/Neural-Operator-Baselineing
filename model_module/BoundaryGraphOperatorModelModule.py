@@ -3,17 +3,17 @@ from torch_geometric.utils import dropout_edge
 
 from einops import rearrange
 
-from models.one_step.mpgno import MPGNO, MPGNOCust
+from models.one_step.beno import BENO
 from model_module.OperatorModelModule import LpLoss, NormError
 from model_module.GraphOperatorModelModule import GraphOperatorModelModule
 
-class MPGraphOperatorModelModule(GraphOperatorModelModule):
+class BoundaryGraphOperatorModelModule(GraphOperatorModelModule):
     def __init__(self, config:dict, train_example_count:int, image_size:tuple):
         super().__init__(config, train_example_count, image_size)
 
     def get_model(self, config:dict, image_size:tuple):
         if(config['EXP_KIND'] == 'MPGNO'):
-            return MPGNOCust(config)
+            return BENO(config)
         raise Exception(f"Invalid model kind specified of {config['EXP_KIND']}")
     
     def get_loss(self, config:dict):
@@ -47,31 +47,20 @@ class MPGraphOperatorModelModule(GraphOperatorModelModule):
         xx, yy, grid, image_size, ptr = (
             batch.x, batch.y, batch.grid, batch.image_size, batch.ptr
         )
-        edge_index_1, edge_index_2, edge_index_3 = (
-            batch.edge_index_1, batch.edge_index_2, batch.edge_index_3 
-        )
-        edge_attr_1, edge_attr_2, edge_attr_3 = (
-            batch.edge_attr_1, batch.edge_attr_2, batch.edge_attr_3 
+        edge_index, boundary_node_index, edge_attr = (
+            batch.edge_index, batch.boundary_node_index, batch.edge_attr 
         )
         image_size = image_size[:2]
         batch_size = len(ptr) - 1
         # run dropout
-        edge_index_1, edge_mask_1 = dropout_edge(edge_index_1, 0.4)
-        edge_mask_1 = torch.where(edge_mask_1)[0]
-        edge_attr_1 = edge_attr_1[edge_mask_1, ...]
-
-        edge_index_2, edge_mask_2 = dropout_edge(edge_index_2, 0.25)
-        edge_mask_2 = torch.where(edge_mask_2)[0]
-        edge_attr_2 = edge_attr_2[edge_mask_2, ...]
-
-        edge_index_3, edge_mask_3 = dropout_edge(edge_index_3, 0.1)
-        edge_mask_3 = torch.where(edge_mask_3)[0]
-        edge_attr_3 = edge_attr_3[edge_mask_3, ...]
-        # run the model
+        edge_index, edge_mask = dropout_edge(edge_index, 0.3)
+        edge_mask = torch.where(edge_mask)[0]
+        edge_attr = edge_attr[edge_mask, ...]
+        # run model
         loss = 0
         for t in range(yy.shape[-1]):
             # get the prediction at this stage
-            im = self.model(xx, grid, edge_index_1, edge_index_2, edge_index_3, edge_attr_1, edge_attr_2, edge_attr_3, batch_size, image_size)
+            im = self.model(xx, grid, edge_index, edge_attr, boundary_node_index, batch_size, image_size)
             # update the current observed values
             xx = torch.cat((xx[..., 1:], im), dim=-1)
             # calculate the loss function
