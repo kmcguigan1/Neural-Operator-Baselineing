@@ -124,15 +124,15 @@ class TokenFNOBranch(nn.Module):
             self.mlp = nn.Conv2d(self.latent_dims, self.latent_dims, 1)    
         self.norm = nn.InstanceNorm2d(self.latent_dims)
 
-    def forward(self, x, image_size, batch_size):
+    def forward(self, x, batch_size, image_size):
         B, C = x.shape
         # reshape the inputs
         x = rearrange(x, "(b h w) c -> b h w c", b=batch_size, c=C, h=image_size[0], w=image_size[1])
-        x = rearrange(x, "b h w c -> b c h w")
+        x = rearrange(x, "b h w c -> b c h w", b=batch_size, h=image_size[0], w=image_size[1], c=C)
         # fourier branch
         x = self.norm(self.conv(self.norm(x)))
         x = self.mlp(x)
         # reshape the outputs
-        x = rearrange(x, "b c h w -> b h w c")
+        x = rearrange(x, "b c h w -> b h w c", b=batch_size, h=image_size[0], w=image_size[1], c=C)
         x = rearrange(x, "b h w c -> (b h w) c", b=batch_size, c=C, h=image_size[0], w=image_size[1])
         return x
