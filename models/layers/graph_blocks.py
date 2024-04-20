@@ -30,7 +30,7 @@ class NNConv(MessagePassing):
         uniform(size, self.root)
         uniform(size, self.bias)
 
-    def forward(self, x, edge_index, edge_attr, a=None):
+    def forward(self, x, edge_index, edge_attr):
         return self.propagate(edge_index, x=x, pseudo=edge_attr)
 
     def message(self, x_j, pseudo):
@@ -48,7 +48,7 @@ class NNConvEdges(NNConv):
     def __init__(self, in_channels, out_channels, kernel, aggr='mean', root_weight=True, bias=True, **kwargs):
         super().__init__(in_channels, out_channels, kernel, aggr=aggr, root_weight=root_weight, bias=bias, **kwargs)
     
-    def forward(self, x, edge_index, edge_attr, a=None):
+    def forward(self, x, edge_index, edge_attr):
         return self.propagate(edge_index, x=x, pseudo=edge_attr) 
     
     def message(self, x_i, x_j, pseudo):
@@ -57,7 +57,7 @@ class NNConvEdges(NNConv):
         return torch.matmul(x_j.unsqueeze(1), weight).squeeze(1)
 
 class DenseNet(torch.nn.Module):
-    def __init__(self, layers, nonlinearity, out_nonlinearity=None, normalize=False):
+    def __init__(self, layers, nonlinearity, out_nonlinearity=None, normalize=True):
         super().__init__()
         self.n_layers = len(layers) - 1
         assert self.n_layers >= 1
@@ -67,7 +67,8 @@ class DenseNet(torch.nn.Module):
             self.layers.append(nn.Linear(layers[j], layers[j+1]))
             if j != self.n_layers - 1:
                 if normalize:
-                    self.layers.append(nn.BatchNorm1d(layers[j+1]))
+                    # self.layers.append(nn.BatchNorm1d(layers[j+1]))
+                    self.layers.append(nn.LayerNorm(layers[j+1]))
                 self.layers.append(nonlinearity())
         if out_nonlinearity is not None:
             self.layers.append(out_nonlinearity())
@@ -98,11 +99,12 @@ class GNOBlockSingleConv(GNOBlockSigleConvBase):
         kernel = DenseNet([self.edge_dims, self.kernel_dims, self.kernel_dims, self.latent_dims**2], torch.nn.GELU)
         self.conv = NNConv(self.latent_dims, self.latent_dims, kernel)
 
-    def forward(self, nodes, edge_index, edge_attr, a=None):
+    def forward(self, nodes, edge_index, edge_attr):
         for idx in range(self.depth):
-            nodes = self.conv(nodes, edge_index, edge_attr, a=a)
-            if(idx < self.depth - 1):
-                nodes = self.activation(nodes)
+            nodes = self.conv(nodes, edge_index, edge_attr)
+            nodes = self.activation(nodes)
+            # if(idx < self.depth - 1):
+            #     nodes = self.activation(nodes)
         return nodes
     
 class GNOBlockSingleConvAddNodesToEdge(GNOBlockSigleConvBase):
@@ -112,11 +114,12 @@ class GNOBlockSingleConvAddNodesToEdge(GNOBlockSigleConvBase):
         kernel = DenseNet([self.edge_dims, self.kernel_dims, self.kernel_dims, self.latent_dims**2], torch.nn.GELU)
         self.conv = NNConvEdges(self.latent_dims, self.latent_dims, kernel)
 
-    def forward(self, nodes, edge_index, edge_attr, a=None):
+    def forward(self, nodes, edge_index, edge_attr):
         for idx in range(self.depth):
-            nodes = self.conv(nodes, edge_index, edge_attr, a=a)
-            if(idx < self.depth - 1):
-                nodes = self.activation(nodes)
+            nodes = self.conv(nodes, edge_index, edge_attr)
+            nodes = self.activation(nodes)
+            # if(idx < self.depth - 1):
+            #     nodes = self.activation(nodes)
         return nodes
     
 """MULTI CONV GNO BLOCKS"""
@@ -130,6 +133,7 @@ class GNOBlockBase(nn.Module):
         self.depth = depth
         self.activation = F.gelu
         self.shorten_kernel = shorten_kernel
+        self.norm = nn.LayerNorm(self.out_dims)
     
     def forward(self, *args):
         raise NotImplementedError('')
@@ -138,7 +142,7 @@ class GNOBlock(GNOBlockBase):
     def __init__(self, in_dims:int, out_dims:int, kernel_dims:int, edge_dims:int, depth:int, shorten_kernel:bool=False):
         super().__init__(in_dims, out_dims, kernel_dims, edge_dims, depth, shorten_kernel)
         if(self.shorten_kernel):
-            kernel = DenseNet([self.edge_dims, self.in_dims*self.out_dims], torch.nn.ReLU)
+            kernel = DenseNet([self.edge_dims, self.kernel_dims, self.in_dims*self.out_dims], torch.nn.ReLU)
         else:
             kernel = DenseNet([self.edge_dims, self.kernel_dims, self.kernel_dims, self.in_dims*self.out_dims], torch.nn.ReLU)
         self.blocks = nn.ModuleList()
@@ -149,11 +153,12 @@ class GNOBlock(GNOBlockBase):
                 in_dims = self.out_dims
             self.blocks.append(NNConv(in_dims, self.out_dims, kernel))
 
-    def forward(self, nodes, edge_index, edge_attr, a=None):
+    def forward(self, nodes, edge_index, edge_attr):
         for idx, block in enumerate(self.blocks):
-            nodes = block(nodes, edge_index, edge_attr, a=a)
+            nodes = block(nodes, edge_index, edge_attr)
             if(idx < len(self.blocks) - 1):
                 nodes = self.activation(nodes)
+                nodes = self.norm(nodes)
         return nodes
     
 class GNOBlockAddNodesToEdge(GNOBlockBase):
@@ -162,7 +167,7 @@ class GNOBlockAddNodesToEdge(GNOBlockBase):
         assert self.in_dims == self.out_dims or self.depth == 1
         self.edge_dims += 2 * self.in_dims
         if(self.shorten_kernel):
-            kernel = DenseNet([self.edge_dims, self.in_dims*self.out_dims], torch.nn.ReLU)
+            kernel = DenseNet([self.edge_dims, self.kernel_dims, self.in_dims*self.out_dims], torch.nn.ReLU)
         else:
             kernel = DenseNet([self.edge_dims, self.kernel_dims, self.kernel_dims, self.in_dims*self.out_dims], torch.nn.ReLU)
         self.blocks = nn.ModuleList()
@@ -173,11 +178,12 @@ class GNOBlockAddNodesToEdge(GNOBlockBase):
                 in_dims = self.out_dims
             self.blocks.append(NNConvEdges(in_dims, self.out_dims, kernel))
 
-    def forward(self, nodes, edge_index, edge_attr, a=None):
+    def forward(self, nodes, edge_index, edge_attr):
         for idx, block in enumerate(self.blocks):
-            nodes = block(nodes, edge_index, edge_attr, a=a)
+            nodes = block(nodes, edge_index, edge_attr)
             if(idx < len(self.blocks) - 1):
                 nodes = self.activation(nodes)
+                nodes = self.norm(nodes)
         return nodes
     
 """Utilities"""
