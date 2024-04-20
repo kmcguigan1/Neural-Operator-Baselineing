@@ -25,18 +25,31 @@ class BoundaryGraphPDEDataModule(GraphPDEDataModule):
         boundary_mask = boundary_mask.reshape(boundary_mask.shape[0]*boundary_mask.shape[1])
         boundary_nodes_index = np.where(boundary_mask==1)[0]
         # get the rest of the edge information
+        this_grid = grid.copy()
         this_grid = this_grid.reshape(this_grid.shape[0]*this_grid.shape[1], -1)
         distances = cdist(this_grid, this_grid)
         connections = np.where(np.logical_and(distances < self.edge_radius, distances > 0))
         edges = np.vstack(connections).astype(np.int32)
+        boundary_mask = boundary_mask.reshape(-1, 1)
         edge_features = np.concatenate((
             distances[connections[0], connections[1]].reshape(-1, 1),
             this_grid[connections[0], :],
             this_grid[connections[1], :],
-            boundary_mask[connections[0]],
-            boundary_mask[connections[1]],
+            boundary_mask[connections[0], :],
+            boundary_mask[connections[1], :],
         ), axis=-1)
-        return [edges, boundary_nodes_index], [edge_features,]
+        # get the boundary edges
+        boundary_nodes_count = np.arange(boundary_nodes_index.shape[0])
+        boundary_edges = np.array(np.meshgrid(boundary_nodes_count, boundary_nodes_count))
+        boundary_edges = boundary_edges.T.reshape(-1, 2)
+        boundary_edges_mask = np.where(boundary_edges[:, 0] != boundary_edges[:, 1])[0]
+        boundary_edges = boundary_edges[boundary_edges_mask].T
+        boundary_edge_attr = np.concatenate((
+            distances[boundary_edges[0], boundary_edges[1]].reshape(-1, 1),
+            this_grid[boundary_edges[0], :],
+            this_grid[boundary_edges[1], :],
+        ), axis=-1)
+        return [edges, boundary_edges, boundary_nodes_index, boundary_mask], [edge_features, boundary_edge_attr]
 
     def get_dataset(self, data:np.ndarray, grid:np.ndarray, edges:list, edge_features:list, image_size:list):
         dataset = []
@@ -48,7 +61,10 @@ class BoundaryGraphPDEDataModule(GraphPDEDataModule):
                 image_size=torch.tensor(image_size, dtype=torch.int16),
                 edge_index=torch.tensor(edges[0], dtype=torch.int64),
                 boundary_edge_index=torch.tensor(edges[1], dtype=torch.int64),
+                boundary_node_index=torch.tensor(edges[2], dtype=torch.int64),
+                boundary_node_mask=torch.tensor(edges[3], dtype=torch.int64),
                 edge_attr=torch.tensor(edge_features[0], dtype=torch.float32),
+                boundary_edge_attr=torch.tensor(edge_features[1], dtype=torch.float32),
             ))
         return dataset
     

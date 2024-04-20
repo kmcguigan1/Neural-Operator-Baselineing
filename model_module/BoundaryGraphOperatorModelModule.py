@@ -12,7 +12,7 @@ class BoundaryGraphOperatorModelModule(GraphOperatorModelModule):
         super().__init__(config, train_example_count, image_size)
 
     def get_model(self, config:dict, image_size:tuple):
-        if(config['EXP_KIND'] == 'MPGNO'):
+        if(config['EXP_KIND'] == 'BENO'):
             return BENO(config)
         raise Exception(f"Invalid model kind specified of {config['EXP_KIND']}")
     
@@ -25,8 +25,11 @@ class BoundaryGraphOperatorModelModule(GraphOperatorModelModule):
         xx, yy, grid, image_size, ptr = (
             batch.x, batch.y, batch.grid, batch.image_size, batch.ptr
         )
-        edge_index, boundary_node_index, edge_attr = (
-            batch.edge_index, batch.boundary_node_index, batch.edge_attr 
+        edge_index, boundary_edge_index, boundary_node_index, boundary_node_mask = (
+            batch.edge_index, batch.boundary_edge_index, batch.boundary_node_index, batch.boundary_node_mask
+        )
+        edge_attr, boundary_edge_attr = (
+            batch.edge_attr, batch.boundary_edge_attr
         )
         image_size = image_size[:2]
         batch_size = len(ptr) - 1
@@ -47,8 +50,11 @@ class BoundaryGraphOperatorModelModule(GraphOperatorModelModule):
         xx, yy, grid, image_size, ptr = (
             batch.x, batch.y, batch.grid, batch.image_size, batch.ptr
         )
-        edge_index, boundary_node_index, edge_attr = (
-            batch.edge_index, batch.boundary_node_index, batch.edge_attr 
+        edge_index, boundary_edge_index, boundary_node_index, boundary_node_mask = (
+            batch.edge_index, batch.boundary_edge_index, batch.boundary_node_index, batch.boundary_node_mask
+        )
+        edge_attr, boundary_edge_attr = (
+            batch.edge_attr, batch.boundary_edge_attr
         )
         image_size = image_size[:2]
         batch_size = len(ptr) - 1
@@ -60,7 +66,7 @@ class BoundaryGraphOperatorModelModule(GraphOperatorModelModule):
         loss = 0
         for t in range(yy.shape[-1]):
             # get the prediction at this stage
-            im = self.model(xx, grid, edge_index, edge_attr, boundary_node_index, batch_size, image_size)
+            im = self.model(xx, grid, edge_index, edge_attr, boundary_edge_index, boundary_edge_attr, boundary_node_index, boundary_node_mask, batch_size, image_size)
             # update the current observed values
             xx = torch.cat((xx[..., 1:], im), dim=-1)
             # calculate the loss function
