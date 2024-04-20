@@ -121,7 +121,7 @@ class GNOBlockSingleConvAddNodesToEdge(GNOBlockSigleConvBase):
     
 """MULTI CONV GNO BLOCKS"""
 class GNOBlockBase(nn.Module):
-    def __init__(self, in_dims:int, out_dims:int, kernel_dims:int, edge_dims:int, depth:int):
+    def __init__(self, in_dims:int, out_dims:int, kernel_dims:int, edge_dims:int, depth:int, shorten_kernel:bool):
         super().__init__()
         self.in_dims = in_dims
         self.out_dims = out_dims
@@ -129,14 +129,18 @@ class GNOBlockBase(nn.Module):
         self.edge_dims = edge_dims
         self.depth = depth
         self.activation = F.gelu
+        self.shorten_kernel = shorten_kernel
     
     def forward(self, *args):
         raise NotImplementedError('')
 
 class GNOBlock(GNOBlockBase):
-    def __init__(self, in_dims:int, out_dims:int, kernel_dims:int, edge_dims:int, depth:int):
-        super().__init__(in_dims, out_dims, kernel_dims, edge_dims, depth)
-        kernel = DenseNet([self.edge_dims, self.kernel_dims, self.kernel_dims, self.in_dims*self.out_dims], torch.nn.ReLU)
+    def __init__(self, in_dims:int, out_dims:int, kernel_dims:int, edge_dims:int, depth:int, shorten_kernel:bool=False):
+        super().__init__(in_dims, out_dims, kernel_dims, edge_dims, depth, shorten_kernel)
+        if(self.shorten_kernel):
+            kernel = DenseNet([self.edge_dims, self.in_dims*self.out_dims], torch.nn.ReLU)
+        else:
+            kernel = DenseNet([self.edge_dims, self.kernel_dims, self.kernel_dims, self.in_dims*self.out_dims], torch.nn.ReLU)
         self.blocks = nn.ModuleList()
         for idx in range(self.depth):
             if(idx == 0):
@@ -153,11 +157,14 @@ class GNOBlock(GNOBlockBase):
         return nodes
     
 class GNOBlockAddNodesToEdge(GNOBlockBase):
-    def __init__(self, in_dims:int, out_dims:int, kernel_dims:int, edge_dims:int, depth:int):
-        super().__init__(in_dims, out_dims, kernel_dims, edge_dims, depth)
+    def __init__(self, in_dims:int, out_dims:int, kernel_dims:int, edge_dims:int, depth:int, shorten_kernel:bool=False):
+        super().__init__(in_dims, out_dims, kernel_dims, edge_dims, depth, shorten_kernel)
         assert self.in_dims == self.out_dims or self.depth == 1
         self.edge_dims += 2 * self.in_dims
-        kernel = DenseNet([self.edge_dims, self.kernel_dims, self.kernel_dims, self.in_dims*self.out_dims], torch.nn.ReLU)
+        if(self.shorten_kernel):
+            kernel = DenseNet([self.edge_dims, self.in_dims*self.out_dims], torch.nn.ReLU)
+        else:
+            kernel = DenseNet([self.edge_dims, self.kernel_dims, self.kernel_dims, self.in_dims*self.out_dims], torch.nn.ReLU)
         self.blocks = nn.ModuleList()
         for idx in range(self.depth):
             if(idx == 0):

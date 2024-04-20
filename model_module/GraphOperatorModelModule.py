@@ -12,7 +12,7 @@ from model_module.OperatorModelModule import OperatorModelModule, LpLoss, NormEr
 class GraphOperatorModelModule(OperatorModelModule):
     def __init__(self, config:dict, train_example_count:int, image_size:tuple):
         super().__init__(config, train_example_count, image_size)
-        self.edge_drop_rate = config['EDGE_DROPOUT']
+        self.edge_drop_rate = config.get('EDGE_DROPOUT', None)
 
     def get_model(self, config:dict, image_size:tuple):
         if(config['EXP_KIND'] == 'GFNO'):
