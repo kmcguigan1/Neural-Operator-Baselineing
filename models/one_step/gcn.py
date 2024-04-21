@@ -20,15 +20,18 @@ class GCN(torch.nn.Module):
         self.blocks = nn.ModuleList([
             GCNConv(self.latent_dims, self.latent_dims) for _ in range(self.depth)
         ])
+        self.norm = nn.LayerNorm(self.latent_dims)
 
     def forward(self, nodes, grid, edge_index, edge_attr, batch_size, image_size):
         nodes = torch.cat((nodes, grid), dim=-1)
         nodes = self.projector(nodes)
         nodes = F.gelu(nodes)
 
-        for block in self.blocks:
+        for idx, block in enumerate(self.blocks):
             nodes = block(nodes, edge_index)
-            nodes = F.gelu(nodes)
+            if(idx < self.depth - 1):
+                nodes = F.gelu(nodes)
+                nodes = self.norm(nodes)
         
         nodes = self.decoder(nodes)
         return nodes

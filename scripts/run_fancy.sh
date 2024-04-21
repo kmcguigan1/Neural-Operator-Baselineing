@@ -10,7 +10,7 @@
 
 #SBATCH --mem=32G
 
-#SBATCH --time=00:45:00 # time (HH:MM:SS)
+#SBATCH --time=05:45:00 # time (HH:MM:SS)
 
 #SBATCH --output=/home/kmcguiga/projects/def-sirisha/kmcguiga/computeCanadaOutput/%j.out
 

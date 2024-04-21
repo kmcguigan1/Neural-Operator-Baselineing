@@ -4,12 +4,12 @@ import torch.nn.functional as F
 
 import math
 
-from models.layers.base_layers import ConvMLP
+from models.layers.base_layers import MLP
 from einops import rearrange
 
 class SpectralConv2d(nn.Module):
-    """We expect the input to be in the format B C H W.
-    This means we expect channel first image style data"""
+    """We expect the input to be in the format B H W C.
+    This means we expect channel last or linear layer style data"""
     def __init__(self, in_channels, out_channels, modes1, modes2, padding_mode=None):
         super().__init__()
         # variables
@@ -20,40 +20,28 @@ class SpectralConv2d(nn.Module):
         self.padding_mode = padding_mode
         # layers
         self.scale = (1 / (in_channels * out_channels))
-        self.weights1 = nn.Parameter(self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
-        self.weights2 = nn.Parameter(self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
+        self.weights1 = nn.Parameter(self.scale * torch.rand(self.modes1, self.modes2, in_channels, out_channels, dtype=torch.cfloat))
+        self.weights2 = nn.Parameter(self.scale * torch.rand(self.modes1, self.modes2, in_channels, out_channels, dtype=torch.cfloat))
 
     # Complex multiplication
     def compl_mul2d(self, input, weights):
-        # (batch, in_channel, x,y ), (in_channel, out_channel, x,y) -> (batch, out_channel, x,y)
-        return torch.einsum("bixy,ioxy->boxy", input, weights)
+        # (batch, x,y, in_channel), ( x,y, in_channel, out_channel) -> (batch, x,y, out_channel)
+        return torch.einsum("bxyi,bxyio->bxyo", input, weights)
 
     def forward(self, x):
         batchsize = x.shape[0]
         #Compute Fourier coeffcients up to factor of e^(- something constant)
-        if(self.padding_mode == 'EVERY_SINGLE'):
-            padding = int(math.sqrt(x.size(-1)))
-            x = F.pad(x, [0, padding, 0, padding])
-        elif(self.padding_mode == 'EVERY_DUAL'):
-            padding = int(math.sqrt(x.size(-1)) // 2)
-            x = F.pad(x, [padding, padding, padding, padding])
-            
-        x_ft = torch.fft.rfft2(x)
+        x_ft = torch.fft.rfftn(x, dim=(-3,-2))
 
         # Multiply relevant Fourier modes
-        out_ft = torch.zeros(batchsize, self.out_channels,  x.size(-2), x.size(-1)//2 + 1, dtype=torch.cfloat, device=x.device)
-        out_ft[:, :, :self.modes1, :self.modes2] = \
-            self.compl_mul2d(x_ft[:, :, :self.modes1, :self.modes2], self.weights1)
-        out_ft[:, :, -self.modes1:, :self.modes2] = \
-            self.compl_mul2d(x_ft[:, :, -self.modes1:, :self.modes2], self.weights2)
+        out_ft = torch.zeros(batchsize,  x.size(-2), x.size(-1)//2 + 1, self.out_channels, dtype=torch.cfloat, device=x.device)
+        out_ft[:, :self.modes1, :self.modes2, :] = \
+            self.compl_mul2d(x_ft[:, :self.modes1, :self.modes2, :], self.weights1)
+        out_ft[:, -self.modes1:, :self.modes2, :] = \
+            self.compl_mul2d(x_ft[:, -self.modes1:, :self.modes2, :], self.weights2)
 
         #Return to physical space
-        x = torch.fft.irfft2(out_ft, s=(x.size(-2), x.size(-1)))
-
-        if(self.padding_mode == 'EVERY_SINGLE'):
-            x = x[..., :-padding, :-padding]
-        elif(self.padding_mode == 'EVERY_DUAL'):
-            x = x[..., padding:-padding, padding:-padding]
+        x = torch.fft.irfftn(out_ft, dim=(-3,-2), s=(x.size(-2), x.size(-1)))
         return x
 
 class FNOBlockWithW(nn.Module):
@@ -68,12 +56,12 @@ class FNOBlockWithW(nn.Module):
         # generate the layers
         self.conv = SpectralConv2d(self.latent_dims, self.latent_dims, self.modes1, self.modes2, padding_mode=self.padding_mode)
         if(self.mlp_ratio is not None):
-            self.mlp = ConvMLP(self.latent_dims, self.latent_dims, self.latent_dims * self.mlp_ratio)
-            self.w = ConvMLP(self.latent_dims, self.latent_dims, self.latent_dims * self.mlp_ratio)
+            self.mlp = MLP(self.latent_dims, self.latent_dims, self.latent_dims * self.mlp_ratio)
+            self.w = MLP(self.latent_dims, self.latent_dims, self.latent_dims * self.mlp_ratio)
         else:
-            self.mlp = nn.Conv2d(self.latent_dims, self.latent_dims, 1)
-            self.w = nn.Conv2d(self.latent_dims, self.latent_dims, 1)
-        self.norm = nn.InstanceNorm2d(self.latent_dims)
+            self.mlp = nn.Linear(self.latent_dims, self.latent_dims)
+            self.w = nn.Linear(self.latent_dims, self.latent_dims)
+        self.norm = nn.LayerNorm(self.latent_dims)
 
     def forward(self, x):
         # fourier branch
@@ -96,10 +84,10 @@ class FNOBlock(nn.Module):
         # generate the layers
         self.conv = SpectralConv2d(self.latent_dims, self.latent_dims, self.modes1, self.modes2, padding_mode=self.padding_mode)
         if(self.mlp_ratio is not None):
-            self.mlp = ConvMLP(self.latent_dims, self.latent_dims, self.latent_dims * self.mlp_ratio)
+            self.mlp = MLP(self.latent_dims, self.latent_dims, self.latent_dims * self.mlp_ratio)
         else:
-            self.mlp = nn.Conv2d(self.latent_dims, self.latent_dims, 1)
-        self.norm = nn.InstanceNorm2d(self.latent_dims)
+            self.mlp = nn.Linear(self.latent_dims, self.latent_dims)
+        self.norm = nn.LayerNorm(self.latent_dims)
 
     def forward(self, x):
         # fourier branch
@@ -119,20 +107,18 @@ class TokenFNOBranch(nn.Module):
         # generate the layers
         self.conv = SpectralConv2d(self.latent_dims, self.latent_dims, self.modes1, self.modes2, padding_mode=self.padding_mode)
         if(self.mlp_ratio is not None):
-            self.mlp = ConvMLP(self.latent_dims, self.latent_dims, self.latent_dims * self.mlp_ratio)
+            self.mlp = MLP(self.latent_dims, self.latent_dims, self.latent_dims * self.mlp_ratio)
         else:
-            self.mlp = nn.Conv2d(self.latent_dims, self.latent_dims, 1)    
-        self.norm = nn.InstanceNorm2d(self.latent_dims)
+            self.mlp = nn.Linear(self.latent_dims, self.latent_dims, 1)    
+        self.norm = nn.LayerNorm(self.latent_dims)
 
-    def forward(self, x, batch_size, image_size):
+    def forward(self, x, image_size, batch_size):
         B, C = x.shape
         # reshape the inputs
         x = rearrange(x, "(b h w) c -> b h w c", b=batch_size, c=C, h=image_size[0], w=image_size[1])
-        x = rearrange(x, "b h w c -> b c h w", b=batch_size, c=C, h=image_size[0], w=image_size[1])
         # fourier branch
         x = self.norm(self.conv(self.norm(x)))
         x = self.mlp(x)
         # reshape the outputs
-        x = rearrange(x, "b c h w -> b h w c", b=batch_size, c=C, h=image_size[0], w=image_size[1])
         x = rearrange(x, "b h w c -> (b h w) c", b=batch_size, c=C, h=image_size[0], w=image_size[1])
         return x

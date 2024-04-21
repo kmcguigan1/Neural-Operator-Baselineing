@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from einops import rearrange
 
-from models.layers.graph_blocks import GNOBlock, GNOBlockAddNodesToEdge, GNOBlockAddInitNodesToEdge
+from models.layers.graph_blocks import GNOBlock, GNOBlockAddNodesToEdge, CombineInitAndEdges
 from models.layers.fourier_blocks import FNOBlockWithW
 
 class GINO(nn.Module):
@@ -29,11 +29,10 @@ class GINO(nn.Module):
         assert (self.add_nodes_to_edge and self.add_init_to_edge) == False
         if(self.add_init_to_edge):
             self.edge_dims += 2
+            self.edge_attr_updater = CombineInitAndEdges()
         # setup layers
         if(self.add_nodes_to_edge):
             gno_block_class = GNOBlockAddNodesToEdge
-        elif(self.add_init_to_edge):
-            self.gno_block_class = GNOBlockAddInitNodesToEdge
         else:
             gno_block_class = GNOBlock
 
@@ -50,17 +49,16 @@ class GINO(nn.Module):
 
     def forward(self, nodes, grid, edge_index, edge_attr, batch_size, image_size):
         # check if we save the init data
-        init = None
         if(self.add_init_to_edge):
-            init = nodes[..., -1:].clone()
+            edge_attr = self.edge_attr_updater(edge_index, edge_attr, nodes[..., -1:])
         # add the grid to the data
         nodes = torch.cat((nodes, grid), dim=-1)
         B, C = nodes.shape
         assert C == self.in_dims and B == batch_size * image_size[0] * image_size[1]
         # project the data
-        nodes = self.project1(nodes, edge_index, edge_attr, a=init)
+        nodes = self.project1(nodes, edge_index, edge_attr)
         nodes = F.gelu(nodes)
-        nodes = self.project2(nodes, edge_index, edge_attr, a=init)
+        nodes = self.project2(nodes, edge_index, edge_attr)
         # go thorugh the fno blocks
         nodes = rearrange(nodes, "(b h w) c -> b h w c", b=batch_size, h=image_size[0], w=image_size[1], c=self.latent_dims)
         nodes = rearrange(nodes, "b h w c -> b c h w", b=batch_size, h=image_size[0], w=image_size[1], c=self.latent_dims)
@@ -69,8 +67,8 @@ class GINO(nn.Module):
         nodes = rearrange(nodes, "b c h w -> b h w c", b=batch_size, h=image_size[0], w=image_size[1], c=self.latent_dims)
         nodes = rearrange(nodes, "b h w c -> (b h w) c", b=batch_size, h=image_size[0], w=image_size[1], c=self.latent_dims)
         # decode the prediction
-        nodes = self.decode1(nodes, edge_index, edge_attr, a=init)
+        nodes = self.decode1(nodes, edge_index, edge_attr)
         nodes = F.gelu(nodes)
-        nodes = self.decode2(nodes, edge_index, edge_attr, a=init)
+        nodes = self.decode2(nodes, edge_index, edge_attr)
         # return the predictions
         return nodes
