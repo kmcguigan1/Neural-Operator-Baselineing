@@ -63,7 +63,7 @@ class GraphOperatorModelModule(OperatorModelModule):
         )
         image_size = image_size[:2]
         batch_size = len(ptr) - 1
-        edge_index, edge_mask = dropout_edge(edge_index, 0.3)
+        edge_index, edge_mask = dropout_edge(edge_index, self.edge_drop_rate)
         edge_mask = torch.where(edge_mask)[0]
         edge_attr = edge_attr[edge_mask, ...]
         # run the model
