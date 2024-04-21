@@ -128,11 +128,11 @@ class TokenFNOBranch(nn.Module):
         B, C = x.shape
         # reshape the inputs
         x = rearrange(x, "(b h w) c -> b h w c", b=batch_size, c=C, h=image_size[0], w=image_size[1])
-        x = rearrange(x, "b h w c -> b c h w", b=batch_size, h=image_size[0], w=image_size[1], c=C)
+        x = rearrange(x, "b h w c -> b c h w", b=batch_size, c=C, h=image_size[0], w=image_size[1])
         # fourier branch
         x = self.norm(self.conv(self.norm(x)))
         x = self.mlp(x)
         # reshape the outputs
-        x = rearrange(x, "b c h w -> b h w c", b=batch_size, h=image_size[0], w=image_size[1], c=C)
+        x = rearrange(x, "b c h w -> b h w c", b=batch_size, c=C, h=image_size[0], w=image_size[1])
         x = rearrange(x, "b h w c -> (b h w) c", b=batch_size, c=C, h=image_size[0], w=image_size[1])
         return x

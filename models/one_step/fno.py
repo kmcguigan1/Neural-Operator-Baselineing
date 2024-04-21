@@ -32,7 +32,8 @@ class FNO2d(nn.Module):
     def forward(self, x, grid):
         # add the grid to the data
         x = torch.cat((x, grid), dim=-1)
-        x = rearrange(x, "b h w c -> b c h w", b=x.size(0))
+        B, H, W, C = x.shape
+        x = rearrange(x, "b h w c -> b c h w", b=B, h=H, w=W, c=C)
         # project the data
         x = self.project(x)
         # pad the inputs if that is what we are doing
@@ -51,5 +52,5 @@ class FNO2d(nn.Module):
         elif(self.padding_mode == 'ONCE_DUAL'):
             x = x[..., padding:-padding, padding:-padding]
         x = self.decode(x)
-        x = rearrange(x, "b c h w -> b h w c", b=x.size(0))
+        x = rearrange(x, "b c h w -> b h w c", b=B, h=H, w=W, c=self.out_dims)
         return x

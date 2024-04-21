@@ -61,10 +61,10 @@ class GINO(nn.Module):
         nodes = self.project2(nodes, edge_index, edge_attr)
         # go thorugh the fno blocks
         nodes = rearrange(nodes, "(b h w) c -> b h w c", b=batch_size, h=image_size[0], w=image_size[1], c=self.latent_dims)
-        nodes = rearrange(nodes, "b h w c -> b c h w")
+        nodes = rearrange(nodes, "b h w c -> b c h w", b=batch_size, h=image_size[0], w=image_size[1], c=self.latent_dims)
         for block in self.blocks:
             nodes = block(nodes)
-        nodes = rearrange(nodes, "b c h w -> b h w c")
+        nodes = rearrange(nodes, "b c h w -> b h w c", b=batch_size, h=image_size[0], w=image_size[1], c=self.latent_dims)
         nodes = rearrange(nodes, "b h w c -> (b h w) c", b=batch_size, h=image_size[0], w=image_size[1], c=self.latent_dims)
         # decode the prediction
         nodes = self.decode1(nodes, edge_index, edge_attr)
