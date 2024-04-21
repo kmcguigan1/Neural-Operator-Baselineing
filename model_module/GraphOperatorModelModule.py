@@ -42,7 +42,8 @@ class GraphOperatorModelModule(OperatorModelModule):
         xx, yy, grid, edge_index, edge_attr, image_size, batch, ptr = (
             batch.x, batch.y, batch.grid, batch.edge_index, batch.edge_attr, batch.image_size, batch.batch, batch.ptr
         )
-        image_size = image_size[:2]
+        base_image_size = image_size[:2]
+        image_size = [base_image_size[0].item(), base_image_size[1].item()]
         batch_size = len(ptr) - 1
         # run the model
         for t in range(yy.shape[-1]):
@@ -55,13 +56,13 @@ class GraphOperatorModelModule(OperatorModelModule):
                 pred = torch.cat((pred, im), -1)
             # update the current observed values
             xx = torch.cat((xx[..., 1:], im), dim=-1)
-        return pred, yy, image_size
+        return pred, yy, base_image_size
     
     def run_batch(self, batch):
         xx, yy, grid, edge_index, edge_attr, image_size, batch, ptr = (
             batch.x, batch.y, batch.grid, batch.edge_index, batch.edge_attr, batch.image_size, batch.batch, batch.ptr
         )
-        image_size = image_size[:2]
+        image_size = [image_size[0].item(), image_size[1].item()]
         batch_size = len(ptr) - 1
         edge_index, edge_mask = dropout_edge(edge_index, self.edge_drop_rate)
         edge_mask = torch.where(edge_mask)[0]

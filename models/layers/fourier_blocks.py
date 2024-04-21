@@ -133,6 +133,8 @@ class TokenFNOBranch(nn.Module):
         x = self.norm(self.conv(self.norm(x)))
         x = self.mlp(x)
         # reshape the outputs
+        print(x.shape, batch_size, C, image_size)
         x = rearrange(x, "b c h w -> b h w c", b=batch_size, c=C, h=image_size[0], w=image_size[1])
+        print(x.shape)
         x = rearrange(x, "b h w c -> (b h w) c", b=batch_size, c=C, h=image_size[0], w=image_size[1])
         return x

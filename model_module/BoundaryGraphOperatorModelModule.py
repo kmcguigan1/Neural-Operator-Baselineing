@@ -31,7 +31,8 @@ class BoundaryGraphOperatorModelModule(GraphOperatorModelModule):
         edge_attr, boundary_edge_attr = (
             batch.edge_attr, batch.boundary_edge_attr
         )
-        image_size = image_size[:2]
+        base_image_size = image_size[:2]
+        image_size = [base_image_size[0].item(), base_image_size[1].item()]
         batch_size = len(ptr) - 1
         # run the model
         for t in range(yy.shape[-1]):
@@ -44,7 +45,7 @@ class BoundaryGraphOperatorModelModule(GraphOperatorModelModule):
                 pred = torch.cat((pred, im), -1)
             # update the current observed values
             xx = torch.cat((xx[..., 1:], im), dim=-1)
-        return pred, yy, image_size
+        return pred, yy, base_image_size
     
     def run_batch(self, batch):
         xx, yy, grid, image_size, ptr = (
@@ -56,7 +57,7 @@ class BoundaryGraphOperatorModelModule(GraphOperatorModelModule):
         edge_attr, boundary_edge_attr = (
             batch.edge_attr, batch.boundary_edge_attr
         )
-        image_size = image_size[:2]
+        image_size = [image_size[0].item(), image_size[1].item()]
         batch_size = len(ptr) - 1
         # run dropout
         edge_index, edge_mask = dropout_edge(edge_index, 0.3)

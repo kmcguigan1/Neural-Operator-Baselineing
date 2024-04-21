@@ -28,13 +28,15 @@ class ModelModule(pl.LightningModule):
 
     def run_inference(self, batch):
         x, y, grid, image_size = batch
-        image_size = image_size[0]
+        base_image_size = image_size[0]
+        image_size = [base_image_size[0].item(), base_image_size[1].item()]
         preds = self.model(x, grid, image_size)
-        return preds, y, image_size
+        return preds, y, base_image_size
     
     def run_batch(self, batch):
         x, y, grid, image_size = batch
         image_size = image_size[0]
+        image_size = [image_size[0].item(), image_size[1].item()]
         preds = self.model(x, grid, image_size)
         loss = self.loss_fn(preds, y)
         return loss
