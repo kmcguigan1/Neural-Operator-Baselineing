@@ -95,7 +95,7 @@ def run_experiment(config=None):
             max_epochs=config['EPOCHS'],
             deterministic=False,
             callbacks=[early_stopping, model_checkpoint_val_loss, lr_monitor],
-            log_every_n_steps=1,
+            log_every_n_steps=10,
         )
         # fit the model on the training data
         trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
