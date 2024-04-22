@@ -75,7 +75,6 @@ class BENO(torch.nn.Module):
         self.add_init_to_edge = config.get("ADD_INIT_TO_EDGE", False)
         self.edge_dims = 7
         self.boundary_edge_dims = 5
-        self.kernel_dims = config['KERNEL_DIMS']
         # check that we only pick one edge thing
         assert (self.add_nodes_to_edge and self.add_init_to_edge) == False
         if(self.add_init_to_edge):
