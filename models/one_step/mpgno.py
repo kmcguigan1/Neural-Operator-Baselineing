@@ -121,7 +121,7 @@ class MPGNOCust(torch.nn.Module):
             else:
                 gno_block_class = GNOBlock
             
-        gno_block_class_partial = partial(gno_block_class, in_dims=self.latent_dims, out_dims=self.latent_dims, kernel_dims=self.kernel_dims, edge_dims=self.edge_dims, depth=self.depth, shorten_kernel=True)
+        gno_block_class_partial = partial(gno_block_class, in_dims=self.latent_dims, out_dims=self.latent_dims, kernel_dims=self.kernel_dims, edge_dims=self.edge_dims, depth=self.depth, shorten_kernel=True, apply_to_output=True)
 
         self.k11 = gno_block_class_partial()
         self.k22 = gno_block_class_partial()
@@ -170,17 +170,17 @@ class MPGNOCust(torch.nn.Module):
         nodes = F.gelu(nodes)
 
         # run the downsmaple blocks
-        nodes_11 = F.gelu(self.k11(nodes, edge_index_11, edge_attr_11))
-        nodes_12 = F.gelu(self.k12(nodes, edge_index_12, edge_attr_12))
+        nodes_11 = self.k11(nodes, edge_index_11, edge_attr_11)
+        nodes_12 = self.k12(nodes, edge_index_12, edge_attr_12)
 
-        nodes_22 = F.gelu(self.k22(nodes_12, edge_index_22, edge_attr_22))
-        nodes_23 = F.gelu(self.k23(nodes_12, edge_index_23, edge_attr_23))
+        nodes_22 = self.k22(nodes_12, edge_index_22, edge_attr_22)
+        nodes_23 = self.k23(nodes_12, edge_index_23, edge_attr_23)
 
-        nodes_33 = F.gelu(self.k33(nodes_23, edge_index_33, edge_attr_33))
+        nodes_33 = self.k33(nodes_23, edge_index_33, edge_attr_33)
 
-        nodes_32 = F.gelu(self.k32(nodes_33, edge_index_32, edge_attr_32))
+        nodes_32 = self.k32(nodes_33, edge_index_32, edge_attr_32)
         
-        nodes_21 = F.gelu(self.k21(nodes_32 + nodes_22, edge_index_21, edge_attr_21))
+        nodes_21 = self.k21(nodes_32 + nodes_22, edge_index_21, edge_attr_21)
 
         nodes = nodes_21 + nodes_11
         

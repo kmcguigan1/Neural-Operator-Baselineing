@@ -1,8 +1,8 @@
-LATENT_DIMS: 32
-DEPTH: 4
+LATENT_DIMS: 16
+DEPTH: 3
 
 # fno stuff
-MODES1: 12
+MODES1: 8
 MODES2: 12
 
 # gno stuff

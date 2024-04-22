@@ -18,9 +18,10 @@ class BoundaryEncoder(nn.Module):
             latent_dims,
             latent_dims,
             depth,
-            edge_dim=edge_dim
+            edge_dim=edge_dim, 
         )
         self.pool = nn.AdaptiveAvgPool1d(output_size=1)
+        self.norm = nn.LayerNorm(latent_dims)
 
     def forward(self, bnd_nodes, bnd_edge_index, bnd_edge_attr):
         # run the attention and pool
@@ -28,7 +29,7 @@ class BoundaryEncoder(nn.Module):
         bnd_nodes = torch.permute(bnd_nodes, dims=[1, 0])
         bnd_nodes = self.pool(bnd_nodes)
         bnd_nodes = torch.permute(bnd_nodes, dims=[1, 0])
-        return bnd_nodes
+        return self.norm(bnd_nodes)
 
 class InteractionNetwork(MessagePassing):
     def __init__(self, latent_dims, aggr='mean'):
@@ -38,10 +39,14 @@ class InteractionNetwork(MessagePassing):
         # setup the layers
         self.node_func = MLP(self.latent_dims*3, self.latent_dims, self.latent_dims)
         self.edge_func = MLP(self.latent_dims*3, self.latent_dims, self.latent_dims)
+        self.node_norm = nn.LayerNorm(self.latent_dims)
+        self.edge_norm = nn.LayerNorm(self.latent_dims)
 
     def forward(self, x, edge_index, edge_attr, boundary):
         x_new, edge_attr_new = self.propagate(edge_index, x=x, edge_attr=edge_attr, boundary=boundary)
-        return x + x_new, edge_attr + edge_attr_new
+        x = self.node_norm(F.gelu(x + x_new))
+        edge_attr = self.edge_norm(F.gelu(edge_attr + edge_attr_new))
+        return x, edge_attr
     
     def message(self, x_i, x_j, edge_attr, boundary):
         edge_attr = torch.cat([x_i, x_j, edge_attr], dim=-1)
@@ -99,41 +104,37 @@ class BENO(torch.nn.Module):
             InteractionNetwork(self.latent_dims) for _ in range(self.depth)
         ])
 
+        self.internal_norm = nn.LayerNorm(self.latent_dims)
+        self.internal_edge_norm = nn.LayerNorm(self.latent_dims)
+        self.external_norm = nn.LayerNorm(self.latent_dims)
+        self.external_edge_norm = nn.LayerNorm(self.latent_dims)
+
     def forward(self, nodes, grid, edge_index, edge_attr, boundary_edge_index, boundary_edge_attr, boundary_node_index, boundary_node_mask, batch_size, image_size):
         nodes = torch.cat([nodes, grid], dim=-1)
-        print(nodes.shape)
         # project all data to latent space
-        internal_nodes = self.projector(nodes)
-        print("Internal nodes: ", internal_nodes.shape)
-        internal_edge_attr = self.edge_projector(edge_attr)
-        print("Internal edges: ", internal_edge_attr.shape)
+        internal_nodes = F.gelu(self.projector(nodes))
+        internal_edge_attr = F.gelu(self.edge_projector(edge_attr))
 
-        external_nodes = self.external_projector(nodes) 
-        print("External nodes: ", external_nodes.shape)
-        print("Boundary Node Mask: ", boundary_node_mask.shape)
+        external_nodes = F.gelu(self.external_projector(nodes))
         external_nodes = external_nodes * boundary_node_mask
-        print("External nodes: ", external_nodes.shape)
-        external_edge_attr = self.external_edge_projector(edge_attr)
-        print("External edges: ", external_edge_attr.shape)
+        external_edge_attr = F.gelu(self.external_edge_projector(edge_attr))
 
-        print("Boundary Node Index: ", boundary_node_index.shape)
-        print(boundary_node_index)
         boundary_nodes = nodes[boundary_node_index, ...]
-        print("Boudnary Nodes: ", boundary_nodes.shape)
-        boundary_nodes = self.boundary_projector(boundary_nodes)
-        print("Boudnary Nodes: ", boundary_nodes.shape)
-        boundary_edge_attr = self.boundary_edge_projector(boundary_edge_attr)
-        print("Boudnary Edges: ", boundary_edge_attr.shape)
+        boundary_nodes = F.gelu(self.boundary_projector(boundary_nodes))
+        boundary_edge_attr = F.gelu(self.boundary_edge_projector(boundary_edge_attr))
         boundary = self.boundary_encoder(boundary_nodes, boundary_edge_index, boundary_edge_attr)
-        print("Boundary: ", boundary.shape)
 
         # run the gno blocks
         for idx, block in enumerate(self.internal_nodes_blocks):
             internal_nodes, internal_edge_attr = block(internal_nodes, edge_index, internal_edge_attr, boundary)
+            internal_nodes = self.internal_norm(internal_nodes)
+            internal_edge_attr = self.internal_edge_norm(internal_edge_attr)
 
         for idx, block in enumerate(self.external_nodes_blocks):
             external_nodes, external_edge_attr = block(external_nodes, edge_index, external_edge_attr, boundary)
+            internal_nodes = self.external_norm(external_nodes)
+            internal_edge_attr = self.external_edge_norm(external_edge_attr)
         
         internal_nodes = self.decoder(internal_nodes)
-        external_nodes = self.bnd_decoder(external_nodes)
+        external_nodes = self.external_decoder(external_nodes)
         return internal_nodes + external_nodes

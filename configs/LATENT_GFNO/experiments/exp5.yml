@@ -1,5 +1,5 @@
 LATENT_DIMS: 32
-DEPTH: 4
+DEPTH: 3
 
 # fno stuff
 MODES1: 12

@@ -26,22 +26,22 @@ class SpectralConv2d(nn.Module):
     # Complex multiplication
     def compl_mul2d(self, input, weights):
         # (batch, x,y, in_channel), ( x,y, in_channel, out_channel) -> (batch, x,y, out_channel)
-        return torch.einsum("bxyi,bxyio->bxyo", input, weights)
+        return torch.einsum("bxyi,xyio->bxyo", input, weights)
 
     def forward(self, x):
         batchsize = x.shape[0]
         #Compute Fourier coeffcients up to factor of e^(- something constant)
-        x_ft = torch.fft.rfftn(x, dim=(-3,-2))
+        x_ft = torch.fft.rfftn(x, dim=(1,2))
 
         # Multiply relevant Fourier modes
-        out_ft = torch.zeros(batchsize,  x.size(-2), x.size(-1)//2 + 1, self.out_channels, dtype=torch.cfloat, device=x.device)
+        out_ft = torch.zeros(batchsize,  x.size(1), x.size(2)//2 + 1, self.out_channels, dtype=torch.cfloat, device=x.device)
         out_ft[:, :self.modes1, :self.modes2, :] = \
             self.compl_mul2d(x_ft[:, :self.modes1, :self.modes2, :], self.weights1)
         out_ft[:, -self.modes1:, :self.modes2, :] = \
             self.compl_mul2d(x_ft[:, -self.modes1:, :self.modes2, :], self.weights2)
 
         #Return to physical space
-        x = torch.fft.irfftn(out_ft, dim=(-3,-2), s=(x.size(-2), x.size(-1)))
+        x = torch.fft.irfftn(out_ft, dim=(1,2), s=(x.size(1), x.size(2)))
         return x
 
 class FNOBlockWithW(nn.Module):
@@ -112,7 +112,7 @@ class TokenFNOBranch(nn.Module):
             self.mlp = nn.Linear(self.latent_dims, self.latent_dims, 1)    
         self.norm = nn.LayerNorm(self.latent_dims)
 
-    def forward(self, x, image_size, batch_size):
+    def forward(self, x, batch_size, image_size):
         B, C = x.shape
         # reshape the inputs
         x = rearrange(x, "(b h w) c -> b h w c", b=batch_size, c=C, h=image_size[0], w=image_size[1])

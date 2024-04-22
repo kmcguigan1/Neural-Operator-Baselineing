@@ -10,51 +10,69 @@ from torch_geometric.loader import DataLoader
 
 from data_module.GraphPDEDataModule import GraphPDEDataModule
 
+class PairData(Data):
+    def __inc__(self, key, value, *args, **kwargs):
+        if key == 'boundary_edge_index':
+            return self.boundary_node_index.size(0)
+        return super().__inc__(key, value, *args, **kwargs)
+
+
 class BoundaryGraphPDEDataModule(GraphPDEDataModule):
     def __init__(self, config:dict):
         super().__init__(config)
         
     def generate_edge_info(self, grid:np.ndarray):
         # boundary mask
-        boundary_mask = np.zeros((grid.shape[0], grid.shape[1]))
-        boundary_mask[0, :] = 1
-        boundary_mask[-1, :] = 1
-        boundary_mask[:, 0] = 1
-        boundary_mask[:, -1] = 1
-        print(boundary_mask)
-        boundary_mask = boundary_mask.reshape(boundary_mask.shape[0]*boundary_mask.shape[1])
-        boundary_nodes_index = np.where(boundary_mask==1)[0]
-        # get the rest of the edge information
+        boundary_node_mask = np.zeros((grid.shape[0], grid.shape[1]))
+        boundary_node_mask[0, :] = 1
+        boundary_node_mask[-1, :] = 1
+        boundary_node_mask[:, 0] = 1
+        boundary_node_mask[:, -1] = 1
+        print(boundary_node_mask)
+        # get the boundary node mask and the index of the boundary nodes
+        boundary_node_mask = boundary_node_mask.reshape(boundary_node_mask.shape[0]*boundary_node_mask.shape[1])
+        boundary_node_index = np.where(boundary_node_mask==1)[0]
+        boundary_node_mask = boundary_node_mask.reshape(-1, 1)
+        # get the grid for this data
         this_grid = grid.copy()
         this_grid = this_grid.reshape(this_grid.shape[0]*this_grid.shape[1], -1)
+        # get the edge distances and create connections between nodes
         distances = cdist(this_grid, this_grid)
         connections = np.where(np.logical_and(distances < self.edge_radius, distances > 0))
-        edges = np.vstack(connections).astype(np.int32)
-        boundary_mask = boundary_mask.reshape(-1, 1)
-        edge_features = np.concatenate((
+        edge_index = np.vstack(connections).astype(np.int32)
+        # get the edge attributes
+        edge_attr = np.concatenate((
             distances[connections[0], connections[1]].reshape(-1, 1),
             this_grid[connections[0], :],
             this_grid[connections[1], :],
-            boundary_mask[connections[0], :],
-            boundary_mask[connections[1], :],
+            boundary_node_mask[connections[0], :],
+            boundary_node_mask[connections[1], :],
         ), axis=-1)
-        # get the boundary edges
-        boundary_nodes_count = np.arange(boundary_nodes_index.shape[0])
-        boundary_edges = np.array(np.meshgrid(boundary_nodes_count, boundary_nodes_count))
-        boundary_edges = boundary_edges.T.reshape(-1, 2)
-        boundary_edges_mask = np.where(boundary_edges[:, 0] != boundary_edges[:, 1])[0]
-        boundary_edges = boundary_edges[boundary_edges_mask].T
+        # pretending we cut out only the boundary nodes
+        # we need to create a new edge index that connects all the nodes that are on the boundary
+        # maker sure we don't include self loops
+        boundary_node_count = np.arange(boundary_node_index.shape[0])
+        boundary_edge_index = np.array(np.meshgrid(boundary_node_count, boundary_node_count))
+        boundary_edge_index = boundary_edge_index.T.reshape(-1, 2)
+        boundary_edge_mask = np.where(boundary_edge_index[:, 0] != boundary_edge_index[:, 1])[0]
+        boundary_edge_index = boundary_edge_index[boundary_edge_mask].T
+        # next we need the information of the original nodes
+        # first step is to convert boundary edge index to replace the indecies with the indecies
+        # of each node in the original set
+        boundary_edge_index_src_nodes = boundary_node_index[boundary_edge_index[0]]
+        boundary_edge_index_dst_nodes = boundary_node_index[boundary_edge_index[1]]
+        # next we should bu
         boundary_edge_attr = np.concatenate((
-            distances[boundary_edges[0], boundary_edges[1]].reshape(-1, 1),
-            this_grid[boundary_edges[0], :],
-            this_grid[boundary_edges[1], :],
+            distances[boundary_edge_index_src_nodes, boundary_edge_index_dst_nodes].reshape(-1,1),
+            this_grid[boundary_edge_index_src_nodes, :],
+            this_grid[boundary_edge_index_dst_nodes, :],
         ), axis=-1)
-        return [edges, boundary_edges, boundary_nodes_index, boundary_mask], [edge_features, boundary_edge_attr]
+        return [edge_index, boundary_edge_index, boundary_node_index, boundary_node_mask], [edge_attr, boundary_edge_attr]
 
     def get_dataset(self, data:np.ndarray, grid:np.ndarray, edges:list, edge_features:list, image_size:list):
         dataset = []
         for example_idx in range(data.shape[0]):
-            dataset.append(Data(
+            dataset.append(PairData(
                 x=torch.tensor(data[example_idx,:,:self.time_steps_in], dtype=torch.float32),
                 y=torch.tensor(data[example_idx,:,self.time_steps_in:self.time_steps_in+self.time_steps_out], dtype=torch.float32),
                 grid=torch.tensor(grid, dtype=torch.float32),

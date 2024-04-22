@@ -37,7 +37,7 @@ class BoundaryGraphOperatorModelModule(GraphOperatorModelModule):
         # run the model
         for t in range(yy.shape[-1]):
             # get the prediction at this stage
-            im = self.model(xx, grid, edge_index, edge_attr, boundary_node_index, batch_size, image_size)
+            im = self.model(xx, grid, edge_index, edge_attr, boundary_edge_index, boundary_edge_attr, boundary_node_index, boundary_node_mask, batch_size, image_size)
             # append the predictions
             if t == 0:
                 pred = im

@@ -16,6 +16,7 @@ from data_module.GraphPDEDataModule import GraphPDEDataModule
 from data_module.MPGraphPDEDataModule import MPGraphPDEDataModule, MPGraphPDEDataModuleCust
 from data_module.BoundaryGraphPDEDataModule import BoundaryGraphPDEDataModule
 # model modules
+from model_module.GraphModelModule import GraphModelModule
 from model_module.OperatorModelModule import OperatorModelModule
 from model_module.GraphOperatorModelModule import GraphOperatorModelModule
 from model_module.MPGraphOperatorModelModule import MPGraphOperatorModelModule, MPGraphOperatorModelModuleCust
@@ -60,7 +61,7 @@ def run_experiment(config=None):
         # seed the environment
         seed_everything(config['SEED'], workers=True)
         # get the data that we will need to train on
-        if(config['EXP_KIND'] in ['GNO','GCN','GFNO','GINO']):
+        if(config['EXP_KIND'] in ['GNO','GCN','GFNO','GINO','LATENT_GFNO']):
             data_module = GraphPDEDataModule(config)
         elif(config['EXP_KIND'] in ['MPGNO',]):
             data_module = MPGraphPDEDataModuleCust(config)
@@ -74,6 +75,8 @@ def run_experiment(config=None):
         # get the model that we will be fitting
         if(config['EXP_KIND'] in ['GNO','GKN','GCN','GFNO',"GINO"]):
             model = GraphOperatorModelModule(config, data_module.train_example_count, data_module.image_size)
+        elif(config['EXP_KIND'] in ['LATENT_GFNO',]):
+            model = GraphModelModule(config, data_module.train_example_count, data_module.image_size)
         elif(config['EXP_KIND'] in ['MPGNO',]):
             model = MPGraphOperatorModelModuleCust(config, data_module.train_example_count, data_module.image_size)
         elif(config['EXP_KIND'] in ['BENO',]):
