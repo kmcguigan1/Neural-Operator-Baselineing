@@ -55,6 +55,18 @@ class NNConvEdges(NNConv):
         pseudo = torch.cat((pseudo, x_i, x_j), dim=-1)
         weight = self.kernel(pseudo).view(-1, self.in_channels, self.out_channels)
         return torch.matmul(x_j.unsqueeze(1), weight).squeeze(1)
+    
+# class NNConvEdgesEfficient(NNConv):
+#     def __init__(self, in_channels, out_channels, kernel, aggr='mean', root_weight=True, bias=True, **kwargs):
+#         super().__init__(in_channels, out_channels, kernel, aggr=aggr, root_weight=root_weight, bias=bias, **kwargs)
+
+#     def forward(self, x, edge_index, edge_attr):
+#         return self.propagate(edge_index, x=x, pseudo=edge_attr) 
+    
+#     def message(self, x_i, x_j, pseudo):
+#         pseudo = torch.cat((pseudo, x_i, x_j), dim=-1)
+#         weight = self.kernel(pseudo).view(-1, self.in_channels, self.out_channels)
+#         return torch.matmul(x_j.unsqueeze(1), weight).squeeze(1)
 
 class DenseNet(torch.nn.Module):
     def __init__(self, layers, nonlinearity, out_nonlinearity=None, normalize=True):
@@ -167,7 +179,7 @@ class GNOBlock(GNOBlockBase):
     
 class GNOBlockAddNodesToEdge(GNOBlockBase):
     def __init__(self, in_dims:int, out_dims:int, kernel_dims:int, edge_dims:int, depth:int, shorten_kernel:bool=False, apply_to_output:bool=False):
-        super().__init__(in_dims, out_dims, kernel_dims, edge_dims, depth, shorten_kernel)
+        super().__init__(in_dims, out_dims, kernel_dims, edge_dims, depth, shorten_kernel, apply_to_output)
         assert self.in_dims == self.out_dims or self.depth == 1
         self.edge_dims += 2 * self.in_dims
         if(self.shorten_kernel):

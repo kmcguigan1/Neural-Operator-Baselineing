@@ -7,7 +7,7 @@ import math
 
 from models.layers.base_layers import MLP
 from models.layers.fourier_blocks_dim_last import TokenFNOBranch
-from models.layers.graph_blocks import GNOBlockSingleConv, GNOBlockSingleConvAddNodesToEdge, CombineInitAndEdges
+from models.layers.graph_blocks import GNOBlock, GNOBlockAddNodesToEdge
 
 class GFNOBlock(nn.Module):
     def __init__(self, latent_dims, modes1, modes2, kernel_dims:int, edge_dims:int, graph_passes:int, padding_mode:str=None):
@@ -24,12 +24,13 @@ class GFNOBlock(nn.Module):
 
         # layers
         self.fno_block = TokenFNOBranch(self.latent_dims, self.modes1, self.modes2, mlp_ratio=None, padding_mode=self.padding_mode)
-        self.gno_block = GNOBlockSingleConv(self.latent_dims, self.latent_dims, self.kernel_dims, self.edge_dims, self.graph_passes)
+        self.gno_block = GNOBlockAddNodesToEdge(self.latent_dims, self.latent_dims, self.kernel_dims, self.edge_dims, self.graph_passes)
+        self.norm = nn.LayerNorm(self.latent_dims)
 
     def forward(self, nodes, edge_index, edge_attrs, batch_size, image_size):
         x1 = self.fno_block(nodes, batch_size, image_size)
         x2 = self.gno_block(nodes, edge_index, edge_attrs)
-        return F.gelu(x1 + x2)
+        return self.norm(F.gelu(x1 + x2))
 
 class LatentGFNO(nn.Module):
     def __init__(self, config:dict):
