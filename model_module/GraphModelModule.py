@@ -3,7 +3,7 @@ from einops import rearrange
 
 from torch_geometric.utils import dropout_edge
 from model_module.ModelModule import ModelModule
-from model_module.OperatorModelModule import LpLoss, NormError
+from model_module.OperatorModelModule import LpLoss, NormError, MultiStepRelativeError
 from models.multi_step.latent_gfno import LatentGFNO
 
 class GraphModelModule(ModelModule):
@@ -19,7 +19,7 @@ class GraphModelModule(ModelModule):
     
     def get_loss(self, config:dict):
         if(config['LOSS'] == 'LPLOSS'):
-            return LpLoss()
+            return MultiStepRelativeError()
         return NormError()
     
     def run_inference(self, batch):
@@ -50,7 +50,7 @@ class GraphModelModule(ModelModule):
         edge_attr = edge_attr[edge_mask, ...]
         # run the model
         preds = self.model(xx, grid, edge_index, edge_attr, batch_size, image_size)
-        preds = rearrange(preds, "(b h w) c -> b (h w c)", b=batch_size, h=image_size[0], w=image_size[1], c=self.steps_out)
-        yy = rearrange(yy, "(b h w) c -> b (h w c)", b=batch_size, h=image_size[0], w=image_size[1], c=self.steps_out)
+        preds = rearrange(preds, "(b h w) c -> b c (h w)", b=batch_size, h=image_size[0], w=image_size[1], c=self.steps_out)
+        yy = rearrange(yy, "(b h w) c -> b c (h w)", b=batch_size, h=image_size[0], w=image_size[1], c=self.steps_out)
         loss = self.loss_fn(preds, yy)
         return loss

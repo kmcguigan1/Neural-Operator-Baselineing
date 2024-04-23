@@ -7,7 +7,7 @@ import math
 
 from models.layers.base_layers import MLP
 from models.layers.fourier_blocks_dim_last import TokenFNOBranch
-from models.layers.graph_blocks import GNOBlock, GNOBlockAddNodesToEdge
+from models.layers.graph_blocks import GNOBlockEfficient
 
 class GFNOBlock(nn.Module):
     def __init__(self, latent_dims, modes1, modes2, kernel_dims:int, edge_dims:int, graph_passes:int, padding_mode:str=None):
@@ -24,7 +24,7 @@ class GFNOBlock(nn.Module):
 
         # layers
         self.fno_block = TokenFNOBranch(self.latent_dims, self.modes1, self.modes2, mlp_ratio=None, padding_mode=self.padding_mode)
-        self.gno_block = GNOBlockAddNodesToEdge(self.latent_dims, self.latent_dims, self.kernel_dims, self.edge_dims, self.graph_passes)
+        self.gno_block = GNOBlockEfficient(self.latent_dims, 1, self.graph_passes)
         self.norm = nn.LayerNorm(self.latent_dims)
 
     def forward(self, nodes, edge_index, edge_attrs, batch_size, image_size):
@@ -50,7 +50,9 @@ class LatentGFNO(nn.Module):
         self.graph_passes = config['GRAPH_PASSES']
         # setup layers
         self.project = MLP(self.in_dims, self.latent_dims, self.latent_dims//2)
+        self.project_edge = MLP(self.edge_dims, self.latent_dims, self.latent_dims//2)
         self.decode = MLP(self.latent_dims, 1, self.latent_dims//2)
+        self.dropout = nn.Dropout(p=0.1)
         self.blocks = nn.ModuleList()
         for idx in range(self.depth):
             self.blocks.append(GFNOBlock(self.latent_dims, self.modes[0], self.modes[1], self.kernel_dims, self.edge_dims, self.graph_passes, padding_mode=self.padding_mode))
@@ -60,12 +62,14 @@ class LatentGFNO(nn.Module):
         nodes = torch.cat((nodes, grid), dim=-1)
         # project the data
         nodes = self.project(nodes)
+        edge_attr = self.project_edge(edge_attr)
         # setup the predictions
         predictions = torch.zeros(batch_size*image_size[0]*image_size[1], self.steps_out, self.latent_dims, device=nodes.device, dtype=torch.float32)
         # go thorugh the blocks
         for step in range(self.steps_out):
             for block in self.blocks:
                 nodes = block(nodes, edge_index, edge_attr, batch_size, image_size)
+                nodes = self.dropout(nodes)
             predictions[:, step, :] = nodes
         # decode the prediction
         predictions = self.decode(predictions)

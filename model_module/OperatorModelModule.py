@@ -135,4 +135,17 @@ class NormError(object):
 
     def __call__(self, x, y):
         return torch.norm(x.view(-1) - y.view(-1), 1)
+    
+class MultiStepRelativeError(object):
+    def __init__(self, norm_order=2):
+        self.norm_order = norm_order
+
+    def __call__(self, x, y):
+        B1, S1, C1 = x.shape
+        B2, S2, C2 = y.shape
+        assert B1 == B2 and C1 == C2 and S1 == S2
+        diff_norms = torch.norm(x - y, self.norm_order, 2, keepdim=True)
+        y_norms = torch.norm(y, self.norm_order, 2, keepdim=True)
+        return torch.sum(diff_norms/y_norms)
+
         
