@@ -184,7 +184,7 @@ def main():
     # config['DATA_FILE'] = 'heat_equation_non_periodic.h5'
     # config['DATA_FILE'] = 'ns_V1e-3_N5000_T50.mat'
     # # config['DATA_FILE'] = 'ns_V1e-4_N10000_T30.mat'
-    config['DATA_FILE'] = 'NavierStokes_V1e-5_N1200_T20.mat'
+    # config['DATA_FILE'] = 'NavierStokes_V1e-5_N1200_T20.mat'
     # run the experiment
     run_experiment(config=config)
 
