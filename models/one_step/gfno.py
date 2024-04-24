@@ -26,8 +26,6 @@ class GFNOBlock(nn.Module):
         self.add_node_to_edge = add_node_to_edge
         # layers
         self.fno_block = TokenFNOBranch(self.latent_dims, self.modes1, self.modes2, mlp_ratio=1, padding_mode=self.padding_mode)
-        # self.gno_block = GNOBlock(self.latent_dims, self.latent_dims, self.kernel_dims, self.edge_dims, self.graph_passes, shorten_kernel=True)
-
         if(self.add_node_to_edge):
             self.gno_block = GNOBlockSingleConvAddNodesToEdge(self.latent_dims, self.latent_dims, self.kernel_dims, self.edge_dims, self.graph_passes)
         else:

@@ -1,0 +1,13 @@
+# general
+BATCH_SIZE: 10
+LATENT_DIMS: 20
+DEPTH: 3
+LOSS: LPLOSS
+
+# fno stuff
+MODES1: 12
+MODES2: 12
+
+# gno stuff
+EDGE_RADIUS: 0.1
+EDGE_DROPOUT: 0.4
