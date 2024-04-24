@@ -204,16 +204,17 @@ class GNOBlockAddNodesToEdge(GNOBlockBase):
 class GNOBlockEfficient(MessagePassing):
     def __init__(self, latent_dims, edge_dims, mlp_ratio:int=None, aggr:str='mean'):
         super().__init__(aggr=aggr)
-        if(mlp_ratio is None):
-            self.src_func = nn.Linear(latent_dims, latent_dims)
-            self.dst_func = nn.Linear(latent_dims, latent_dims)
-            self.edge_func = nn.Linear(edge_dims, latent_dims)
-        else:
+        if(mlp_ratio is not None):
             self.src_func = MLP(latent_dims, latent_dims, latent_dims*mlp_ratio)
             self.dst_func = MLP(latent_dims, latent_dims, latent_dims*mlp_ratio)
             self.edge_func = MLP(edge_dims, latent_dims, latent_dims*mlp_ratio)
-        
-        self.out_func = MLP(latent_dims, latent_dims, latent_dims*mlp_ratio)
+            self.out_func = MLP(latent_dims, latent_dims, latent_dims*mlp_ratio)
+        else:
+            self.src_func = nn.Linear(latent_dims, latent_dims)
+            self.dst_func = nn.Linear(latent_dims, latent_dims)
+            self.edge_func = nn.Linear(edge_dims, latent_dims)
+            self.out_func = nn.Linear(latent_dims, latent_dims)
+    
         self.norm = nn.LayerNorm(latent_dims)
 
     def forward(self, x, edge_index, edge_attr):

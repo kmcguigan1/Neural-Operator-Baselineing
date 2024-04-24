@@ -68,7 +68,7 @@ def run_experiment(config=None):
         # seed the environment
         seed_everything(config['SEED'], workers=True)
         # get the data that we will need to train on
-        if(config['EXP_KIND'] in ['GNO','GCN','GFNO','GINO','LATENT_GFNO']):
+        if(config['EXP_KIND'] in ['GNO','GCN','GFNO','GINO','LATENT_GFNO','GFNO_EFF']):
             data_module = GraphPDEDataModule(config)
         elif(config['EXP_KIND'] in ['MPGNO',]):
             data_module = MPGraphPDEDataModuleCust(config)
@@ -80,7 +80,7 @@ def run_experiment(config=None):
             raise Exception('No data module can be found')
         train_loader, val_loader = data_module.get_training_data()
         # get the model that we will be fitting
-        if(config['EXP_KIND'] in ['GNO','GKN','GCN','GFNO',"GINO"]):
+        if(config['EXP_KIND'] in ['GNO','GKN','GCN','GFNO',"GINO",'GFNO_EFF']):
             model = GraphOperatorModelModule(config, data_module.train_example_count, data_module.image_size)
         elif(config['EXP_KIND'] in ['LATENT_GFNO',]):
             model = GraphModelModule(config, data_module.train_example_count, data_module.image_size)

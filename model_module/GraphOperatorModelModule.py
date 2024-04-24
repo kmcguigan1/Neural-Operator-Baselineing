@@ -7,6 +7,7 @@ from models.one_step.gfno import GFNO
 from models.one_step.gino import GINO
 from models.one_step.gno import GNO
 from models.one_step.gcn import GCN
+from models.one_step.gfno_efficient import GFNOEfficient
 from model_module.OperatorModelModule import OperatorModelModule, LpLoss, NormError
 
 class GraphOperatorModelModule(OperatorModelModule):
@@ -23,6 +24,8 @@ class GraphOperatorModelModule(OperatorModelModule):
             return GNO(config)
         elif(config['EXP_KIND'] == 'GCN'):
             return GCN(config)
+        elif(config['EXP_KIND'] == 'GFNO_EFF'):
+            return GFNOEfficient(config)
         raise Exception(f"Invalid model kind specified of {config['EXP_KIND']}")
     
     def get_loss(self, config:dict):
