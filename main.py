@@ -45,11 +45,16 @@ def parse_model_outputs(preds:list, idx:int) -> np.array:
 def evaluate_model(trainer, model, data_module, loader, split, indecies:np.ndarray=None, save_results:bool=False, data_file:str=None):
     outputs = trainer.predict(model=model, dataloaders=loader)
     predictions, actuals = parse_model_outputs(outputs, 0), parse_model_outputs(outputs, 1)
+    del outputs
+    gc.collect()
     predictions = data_module.inverse_transform(predictions)
     actuals = data_module.inverse_transform(actuals)
     key_metric = run_all_metrics(predictions, actuals, split)
     if(save_results):
         save_predictions(predictions, actuals, indecies, split, data_file)
+    del predictions
+    del actuals
+    gc.collect()
     return key_metric
 
 def run_experiment(config=None):
