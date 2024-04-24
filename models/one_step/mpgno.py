@@ -26,9 +26,10 @@ class MPGNO(torch.nn.Module):
         self.kernel_dims = config['KERNEL_DIMS']
         # check that we only pick one edge thing
         assert (self.add_nodes_to_edge and self.add_init_to_edge) == False
-        if(self.add_init_to_edge):
-            self.edge_dims += 2 # * self.steps_in
-            self.edge_attr_updater = CombineInitAndEdges()
+        assert (self.add_nodes_to_edge or self.add_init_to_edge) == False
+        # if(self.add_init_to_edge):
+        #     self.edge_dims += 2 # * self.steps_in
+        #     self.edge_attr_updater = CombineInitAndEdges()
         # create the layers
         self.projector = MLP(self.in_dims, self.latent_dims, self.latent_dims // 2)
         self.decoder = MLP(self.latent_dims, 1, self.latent_dims // 2)
@@ -58,10 +59,10 @@ class MPGNO(torch.nn.Module):
 
     def forward(self, nodes, grid, edge_index_1, edge_index_2, edge_index_3, edge_attr_1, edge_attr_2, edge_attr_3, batch_size, image_size):
         # check if we save the init data
-        if(self.add_init_to_edge):
-            edge_attr_1 = self.edge_attr_updater(edge_index_1, edge_attr_1, nodes[..., -1:])
-            edge_attr_2 = self.edge_attr_updater(edge_index_2, edge_attr_2, nodes[..., -1:])
-            edge_attr_3 = self.edge_attr_updater(edge_index_3, edge_attr_3, nodes[..., -1:])
+        # if(self.add_init_to_edge):
+        #     edge_attr_1 = self.edge_attr_updater(edge_index_1, edge_attr_1, nodes[..., -1:])
+        #     edge_attr_2 = self.edge_attr_updater(edge_index_2, edge_attr_2, nodes[..., -1:])
+        #     edge_attr_3 = self.edge_attr_updater(edge_index_3, edge_attr_3, nodes[..., -1:])
         
         # project the data
         nodes = torch.cat((nodes, grid), dim=-1)
@@ -103,9 +104,10 @@ class MPGNOCust(torch.nn.Module):
         self.kernel_dims = config['KERNEL_DIMS']
         # check that we only pick one edge thing
         assert (self.add_nodes_to_edge and self.add_init_to_edge) == False
-        if(self.add_init_to_edge and False):
-            self.edge_dims += 2 # * self.steps_in
-            self.edge_attr_updater = CombineInitAndEdges()
+        assert (self.add_nodes_to_edge or self.add_init_to_edge) == False
+        # if(self.add_init_to_edge and False):
+        #     self.edge_dims += 2 # * self.steps_in
+        #     self.edge_attr_updater = CombineInitAndEdges()
         # create the layers
         self.projector = MLP(self.in_dims, self.latent_dims, self.latent_dims // 2)
         self.decoder = MLP(self.latent_dims, 1, self.latent_dims // 2)
@@ -155,14 +157,14 @@ class MPGNOCust(torch.nn.Module):
             image_size
         ):
         # check if we save the init data
-        if(self.add_init_to_edge and False):
-            edge_attr_11 = self.edge_attr_updater(edge_index_11, edge_attr_11, nodes[..., -1:])
-            edge_attr_12 = self.edge_attr_updater(edge_index_12, edge_attr_12, nodes[..., -1:])
-            edge_attr_22 = self.edge_attr_updater(edge_index_22, edge_attr_22, nodes[..., -1:])
-            edge_attr_23 = self.edge_attr_updater(edge_index_23, edge_attr_23, nodes[..., -1:])
-            edge_attr_33 = self.edge_attr_updater(edge_index_33, edge_attr_33, nodes[..., -1:])
-            edge_attr_32 = self.edge_attr_updater(edge_index_32, edge_attr_32, nodes[..., -1:])
-            edge_attr_21 = self.edge_attr_updater(edge_index_21, edge_attr_21, nodes[..., -1:])
+        # if(self.add_init_to_edge and False):
+        #     edge_attr_11 = self.edge_attr_updater(edge_index_11, edge_attr_11, nodes[..., -1:])
+        #     edge_attr_12 = self.edge_attr_updater(edge_index_12, edge_attr_12, nodes[..., -1:])
+        #     edge_attr_22 = self.edge_attr_updater(edge_index_22, edge_attr_22, nodes[..., -1:])
+        #     edge_attr_23 = self.edge_attr_updater(edge_index_23, edge_attr_23, nodes[..., -1:])
+        #     edge_attr_33 = self.edge_attr_updater(edge_index_33, edge_attr_33, nodes[..., -1:])
+        #     edge_attr_32 = self.edge_attr_updater(edge_index_32, edge_attr_32, nodes[..., -1:])
+        #     edge_attr_21 = self.edge_attr_updater(edge_index_21, edge_attr_21, nodes[..., -1:])
         
         # project the data
         nodes = torch.cat((nodes, grid), dim=-1)
