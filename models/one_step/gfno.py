@@ -7,7 +7,7 @@ import math
 
 from models.layers.base_layers import MLP
 from models.layers.fourier_blocks_dim_last import TokenFNOBranch
-from models.layers.graph_blocks import GNOBlockSingleConv, GNOBlockSingleConvAddNodesToEdge, CombineInitAndEdges
+from models.layers.graph_blocks import GNOBlockSingleConv, GNOBlockSingleConvAddNodesToEdge, CombineInitAndEdges, GNOBlock
 
 class GFNOBlock(nn.Module):
     def __init__(self, latent_dims, modes1, modes2, kernel_dims:int, edge_dims:int, graph_passes:int, add_init_to_edge:bool, add_node_to_edge:bool, padding_mode:str=None):
@@ -26,11 +26,12 @@ class GFNOBlock(nn.Module):
         self.add_node_to_edge = add_node_to_edge
         # layers
         self.fno_block = TokenFNOBranch(self.latent_dims, self.modes1, self.modes2, mlp_ratio=1, padding_mode=self.padding_mode)
-        
-        if(self.add_node_to_edge):
-            self.gno_block = GNOBlockSingleConvAddNodesToEdge(self.latent_dims, self.latent_dims, self.kernel_dims, self.edge_dims, self.graph_passes)
-        else:
-            self.gno_block = GNOBlockSingleConv(self.latent_dims, self.latent_dims, self.kernel_dims, self.edge_dims, self.graph_passes)
+        self.gno_block = GNOBlock(self.latent_dims, self.latent_dims, self.kernel_dims, self.edge_dims, self.graph_passes, shorten_kernel=True)
+
+        # if(self.add_node_to_edge):
+        #     self.gno_block = GNOBlockSingleConvAddNodesToEdge(self.latent_dims, self.latent_dims, self.kernel_dims, self.edge_dims, self.graph_passes)
+        # else:
+        #     self.gno_block = GNOBlockSingleConv(self.latent_dims, self.latent_dims, self.kernel_dims, self.edge_dims, self.graph_passes)
 
     def forward(self, nodes, edge_index, edge_attrs, batch_size, image_size):
         x1 = self.fno_block(nodes, batch_size, image_size)

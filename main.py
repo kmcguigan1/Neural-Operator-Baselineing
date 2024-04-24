@@ -4,6 +4,8 @@ from datetime import datetime
 import numpy as np
 import wandb
 
+# os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+
 import lightning.pytorch as pl
 from lightning.pytorch import seed_everything
 from lightning.pytorch.loggers import WandbLogger
