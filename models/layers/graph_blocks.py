@@ -203,6 +203,7 @@ class GNOBlockEfficient(MessagePassing):
     def __init__(self, latent_dims, edge_dims, mlp_ratio:int=None, aggr:str='mean'):
         super().__init__(aggr=aggr)
         if(mlp_ratio is not None):
+            raise Exception('')
             self.src_func = MLP(latent_dims, latent_dims, latent_dims*mlp_ratio)
             self.dst_func = MLP(latent_dims, latent_dims, latent_dims*mlp_ratio)
             self.edge_func = MLP(edge_dims, latent_dims, latent_dims*mlp_ratio)
