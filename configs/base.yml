@@ -15,8 +15,8 @@ OPTIMIZER:
 SCHEDULER:
   KIND: cosine
 
-# DATA_FILE: heat_equation_non_periodic.h5
-DATA_FILE: heat_equation_periodic.h5
+DATA_FILE: heat_equation_non_periodic.h5
+# DATA_FILE: heat_equation_periodic.h5
 # DATA_FILE: NavierStokes_V1e-5_N1200_T20.mat
 
 DATA_MODE: CUST_PDE
