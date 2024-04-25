@@ -110,10 +110,9 @@ class GNOBlockSingleConv(GNOBlockSigleConvBase):
     def forward(self, nodes, edge_index, edge_attr):
         for idx in range(self.depth):
             nodes = self.conv(nodes, edge_index, edge_attr)
-            nodes = self.activation(nodes)
-            nodes = self.norm(nodes)
-            # if(idx < self.depth - 1):
-            #     nodes = self.activation(nodes)
+            if(idx < self.depth - 1 or self.apply_to_output):
+                nodes = self.activation(nodes)
+                nodes = self.norm(nodes)
         return nodes
     
 class GNOBlockSingleConvAddNodesToEdge(GNOBlockSigleConvBase):
@@ -129,10 +128,9 @@ class GNOBlockSingleConvAddNodesToEdge(GNOBlockSigleConvBase):
     def forward(self, nodes, edge_index, edge_attr):
         for idx in range(self.depth):
             nodes = self.conv(nodes, edge_index, edge_attr)
-            nodes = self.activation(nodes)
-            nodes = self.norm(nodes)
-            # if(idx < self.depth - 1):
-            #     nodes = self.activation(nodes)
+            if(idx < self.depth - 1 or self.apply_to_output):
+                nodes = self.activation(nodes)
+                nodes = self.norm(nodes)
         return nodes
     
 """MULTI CONV GNO BLOCKS"""
@@ -195,7 +193,7 @@ class GNOBlockAddNodesToEdge(GNOBlockBase):
     def forward(self, nodes, edge_index, edge_attr):
         for idx, block in enumerate(self.blocks):
             nodes = block(nodes, edge_index, edge_attr)
-            if(idx < len(self.blocks) - 1):
+            if(idx < len(self.blocks) - 1 or self.apply_to_output):
                 nodes = self.activation(nodes)
                 nodes = self.norm(nodes)
         return nodes
@@ -220,8 +218,7 @@ class GNOBlockEfficient(MessagePassing):
     def forward(self, x, edge_index, edge_attr):
         x_new = self.propagate(edge_index, x=x, edge_attr=edge_attr)
         x_new = self.norm(F.gelu(x_new))
-        # x_new = self.norm(F.gelu(x + x_new))
-        # x_new = self.propagate(edge_index, x=x_new, edge_attr=edge_attr)
+        x_new = self.propagate(edge_index, x=x_new, edge_attr=edge_attr)
         x = x + x_new
         return x
     
