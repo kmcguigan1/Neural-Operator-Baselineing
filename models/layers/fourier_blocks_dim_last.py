@@ -96,7 +96,7 @@ class FNOBlock(nn.Module):
         return x
 
 class TokenFNOBranch(nn.Module):
-    def __init__(self, latent_dims:int, modes1:int, modes2:int, mlp_ratio=2, padding_mode=None):
+    def __init__(self, latent_dims:int, modes1:int, modes2:int, mlp_ratio=None, padding_mode=None):
         super().__init__()
         # save the variables
         self.latent_dims = latent_dims
