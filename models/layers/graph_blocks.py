@@ -218,10 +218,10 @@ class GNOBlockEfficient(MessagePassing):
         self.norm = nn.LayerNorm(latent_dims)
 
     def forward(self, x, edge_index, edge_attr):
-        x_new = self.norm(F.gelu(x))
-        x_new = self.propagate(edge_index, x=x_new, edge_attr=edge_attr)
-        x_new = self.norm(F.gelu(x + x_new))
-        x_new = self.propagate(edge_index, x=x_new, edge_attr=edge_attr)
+        x_new = self.propagate(edge_index, x=x, edge_attr=edge_attr)
+        x_new = self.norm(F.gelu(x_new))
+        # x_new = self.norm(F.gelu(x + x_new))
+        # x_new = self.propagate(edge_index, x=x_new, edge_attr=edge_attr)
         x = x + x_new
         return x
     
