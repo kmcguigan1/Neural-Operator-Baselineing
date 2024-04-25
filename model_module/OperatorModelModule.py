@@ -51,11 +51,11 @@ class OperatorModelModule(ModelModule):
         for t in range(yy.shape[-1]):
             # get the prediction at this stage
             im = self.model(xx, grid)
-            # append the predictions
-            if t == 0:
-                pred = im
-            else:
-                pred = torch.cat((pred, im), -1)
+            # # append the predictions
+            # if t == 0:
+            #     pred = im
+            # else:
+            #     pred = torch.cat((pred, im), -1)
             # update the current observed values
             xx = torch.cat((xx[..., 1:], im), dim=-1)
             # calculate the loss function
