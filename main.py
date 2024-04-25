@@ -110,10 +110,10 @@ def run_experiment(config=None):
         # fit the model on the training data
         trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
         # evaluate on the data
-        evaluate_model(trainer, model, data_module, val_loader, 'val')
+        # evaluate_model(trainer, model, data_module, val_loader, 'val')
         del val_loader
         gc.collect()
-        evaluate_model(trainer, model, data_module, train_loader, 'train')
+        # evaluate_model(trainer, model, data_module, train_loader, 'train')
         del train_loader
         gc.collect()
         # get the testing data
