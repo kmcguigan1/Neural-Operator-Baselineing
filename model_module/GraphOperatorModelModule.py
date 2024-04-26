@@ -6,6 +6,7 @@ from einops import rearrange
 from models.one_step.gfno import GFNO
 from models.one_step.gino import GINO
 from models.one_step.gno import GNO
+from models.one_step.gno_efficient import GNOEfficient
 from models.one_step.gcn import GCN
 from models.one_step.gfno_efficient import GFNOEfficient
 from model_module.OperatorModelModule import OperatorModelModule, LpLoss, NormError
@@ -26,6 +27,8 @@ class GraphOperatorModelModule(OperatorModelModule):
             return GCN(config)
         elif(config['EXP_KIND'] == 'GFNO_EFF'):
             return GFNOEfficient(config)
+        elif(config['EXP_KIND'] == 'GNO_EFF'):
+            return GNOEfficient(config)
         raise Exception(f"Invalid model kind specified of {config['EXP_KIND']}")
     
     def get_loss(self, config:dict):

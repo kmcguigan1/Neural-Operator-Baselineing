@@ -49,6 +49,12 @@ def calculate_relative_error(forecasts:np.array, actuals:np.array, metric_name:s
     relative_error = np.mean(diff_norms / y_norms)
     log_single_metric(split_name, metric_name, relative_error)
 
+def calculate_sample_relative_error(forecasts:np.ndarray, actuals:np.ndarray, metric_name:str, split_name:str):
+    diff_norms = np.linalg.norm(forecasts - actuals, ord=2, axis=1, keepdims=True)
+    y_norms = np.linalg.norm(y, ord=actuals, axis=1, keepdims=True)
+    relative_error = np.mean(diff_norms / y_norms)
+    log_single_metric(split_name, metric_name, relative_error)
+
 def flatten_outputs(forecasts:np.array, actuals:np.array):
     # the shape should be (sample, lat, lon, time)
     assert len(forecasts.shape) == 4
@@ -150,9 +156,10 @@ def run_all_metrics(forecasts:np.array, actuals:np.array, split_name:str):
     # do all the simple metrics on the model predictions
     mean_abs_error = calculate_mean_absolute_error(forecasts, actuals, 'mean_absolute_error', split_name)
     calculate_mean_squared_error(forecasts, actuals, 'mean_squared_error', split_name)
-    calculate_normalized_error(forecasts, actuals, 'l1_norm_error', split_name, order=1)
+    # calculate_normalized_error(forecasts, actuals, 'l1_norm_error', split_name, order=1)
     calculate_relative_error(forecasts, actuals, 'l2_norm_relative_error', split_name, order=2)
-    calculate_relative_error(forecasts, actuals, 'l1_norm_relative_error', split_name, order=1)
+    # calculate_relative_error(forecasts, actuals, 'l1_norm_relative_error', split_name, order=1)
+    calculate_sample_relative_error(forecasts, actuals, 'relative_error', split_name)
     return mean_abs_error
 
 def save_predictions(predictions:np.ndarray, actuals:np.ndarray, indecies:np.ndarray, split:str, data_file:str):

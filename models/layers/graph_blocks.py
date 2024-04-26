@@ -94,6 +94,7 @@ class GNOBlockSigleConvBase(nn.Module):
         self.norm = nn.LayerNorm(self.latent_dims)
         self.shorten_kernel = shorten_kernel
         self.apply_to_output = apply_to_output
+        # validate some parameters
 
     def forward(self, *args):
         raise NotImplementedError('')
@@ -200,27 +201,29 @@ class GNOBlockAddNodesToEdge(GNOBlockBase):
     
 """Efficient Implementation"""
 class GNOBlockEfficient(MessagePassing):
-    def __init__(self, latent_dims, edge_dims, mlp_ratio:int=None, aggr:str='mean'):
+    def __init__(self, latent_dims:int, edge_dims:int, depth:int, mlp_ratio:int=None, aggr:str='mean', apply_to_output:bool=False):
         super().__init__(aggr=aggr)
+        self.depth = depth
+        self.apply_to_output = apply_to_output
+        self.norm = nn.LayerNorm(latent_dims)
         if(mlp_ratio is not None):
-            raise Exception('')
             self.src_func = MLP(latent_dims, latent_dims, latent_dims*mlp_ratio)
             self.dst_func = MLP(latent_dims, latent_dims, latent_dims*mlp_ratio)
             self.edge_func = MLP(edge_dims, latent_dims, latent_dims*mlp_ratio)
             self.out_func = MLP(latent_dims, latent_dims, latent_dims*mlp_ratio)
+            self.self_func = MLP(latent_dims, latent_dims, latent_dims*mlp_ratio)
         else:
             self.src_func = nn.Linear(latent_dims, latent_dims)
             self.dst_func = nn.Linear(latent_dims, latent_dims)
             self.edge_func = nn.Linear(edge_dims, latent_dims)
             self.out_func = nn.Linear(latent_dims, latent_dims)
-    
-        self.norm = nn.LayerNorm(latent_dims)
+            self.self_func = nn.Linear(latent_dims, latent_dims)
 
     def forward(self, x, edge_index, edge_attr):
-        x_new = self.propagate(edge_index, x=x, edge_attr=edge_attr)
-        x_new = self.norm(F.gelu(x_new))
-        x_new = self.propagate(edge_index, x=x_new, edge_attr=edge_attr)
-        x = x + x_new
+        for idx in range(self.depth):
+            x = self.propagate(edge_index, x=x, edge_attr=edge_attr)
+            if(idx < self.depth - 1):
+                x = self.norm(F.gelu(x))
         return x
     
     def message(self, x_i, x_j, edge_attr):
@@ -229,6 +232,33 @@ class GNOBlockEfficient(MessagePassing):
         edge_attr = self.edge_func(edge_attr)
         return self.out_func(x_i + x_j + edge_attr)
     
+    def update(self, aggr_out, x):
+        return self.self_func(x) + aggr_out
+
+class GNOBlockEfficientEdgeUpdates(GNOBlockEfficient):
+    def __init__(self, latent_dims:int, edge_dims:int, depth:int, mlp_ratio:int=None, aggr:str='mean', apply_to_output:bool=False):
+        super().__init__(latent_dims, edge_dims, depth, mlp_ratio=mlp_ratio, aggr=aggr, apply_to_output=apply_to_output)
+        self.edge_norm = nn.LayerNorm(edge_dims)
+        if(mlp_ratio is not None):
+            self.edge_out_func = MLP(latent_dims, edge_dims, latent_dims*mlp_ratio)
+        else:
+            self.edge_out_func = nn.Linear(latent_dims, edge_dims)
+    
+    def forward(self, x, edge_index, edge_attr):
+        for idx in range(self.depth):
+            x, edge_attr = self.propagate(edge_index, x=x, edge_attr=edge_attr)
+            if(idx < self.depth - 1):
+                x = self.norm(F.gelu(x))
+                edge_attr = self.edge_norm(F.gelu(edge_attr))
+        return x
+    
+    def message(self, x_i, x_j, edge_attr):
+        x_i = self.dst_func(x_i)
+        x_j = self.src_func(x_j)
+        edge_attr = self.edge_func(edge_attr)
+        info = x_i + x_j + edge_attr
+        return self.out_func(info), self.edge_out_func(info)
+
 """Utilities"""
 class CombineInitAndEdges(nn.Module):
     def __init__(self):
