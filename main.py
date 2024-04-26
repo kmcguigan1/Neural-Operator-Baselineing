@@ -117,15 +117,16 @@ def run_experiment(config=None):
         del train_loader
         gc.collect()
         # get the testing data
+        save_results = config.get("SAVE_RESULTS", False)
         if(config['EXP_KIND'] != 'CONV_LSTM'):
             print("Running Test on 1 downsample ratio")
             test_loader = data_module.get_testing_data(downsample_ratio=1)
-            key_metric = evaluate_model(trainer, model, data_module, test_loader, 'test_upsampled', indecies=data_module.data_reader.test_indecies, data_file=config['DATA_FILE'])
+            key_metric = evaluate_model(trainer, model, data_module, test_loader, 'test_upsampled', indecies=data_module.data_reader.test_indecies, data_file=config['DATA_FILE'], save_results=save_results)
             del test_loader
             gc.collect()
         print("Running Test on 2 downsample ratio")
         test_loader = data_module.get_testing_data(downsample_ratio=2)
-        key_metric = evaluate_model(trainer, model, data_module, test_loader, 'test', indecies=data_module.data_reader.test_indecies, data_file=config['DATA_FILE'])
+        key_metric = evaluate_model(trainer, model, data_module, test_loader, 'test', indecies=data_module.data_reader.test_indecies, data_file=config['DATA_FILE'], save_results=save_results)
         del test_loader
         gc.collect()
         # predict the model
