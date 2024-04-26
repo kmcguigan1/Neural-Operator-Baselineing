@@ -18,7 +18,7 @@ class GCN(torch.nn.Module):
         self.decoder = MLP(self.latent_dims, self.out_dims, self.latent_dims // 2)
         
         self.blocks = nn.ModuleList([
-            GCNConv(self.latent_dims, self.latent_dims) for _ in range(self.depth)
+            GCNConv(self.latent_dims, self.latent_dims, normalize=False) for _ in range(self.depth)
         ])
         self.norm = nn.LayerNorm(self.latent_dims)
 
@@ -28,7 +28,7 @@ class GCN(torch.nn.Module):
         nodes = F.gelu(nodes)
 
         for idx, block in enumerate(self.blocks):
-            nodes = block(nodes, edge_index)
+            nodes = nodes + block(nodes, edge_index)
             if(idx < self.depth - 1):
                 nodes = F.gelu(nodes)
                 nodes = self.norm(nodes)
