@@ -51,7 +51,7 @@ def calculate_relative_error(forecasts:np.array, actuals:np.array, metric_name:s
 
 def calculate_sample_relative_error(forecasts:np.ndarray, actuals:np.ndarray, metric_name:str, split_name:str):
     diff_norms = np.linalg.norm(forecasts - actuals, ord=2, axis=1, keepdims=True)
-    y_norms = np.linalg.norm(y, ord=actuals, axis=1, keepdims=True)
+    y_norms = np.linalg.norm(actuals, ord=2, axis=1, keepdims=True)
     relative_error = np.mean(diff_norms / y_norms)
     log_single_metric(split_name, metric_name, relative_error)
 

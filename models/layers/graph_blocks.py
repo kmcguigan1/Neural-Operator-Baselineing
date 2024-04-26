@@ -221,8 +221,8 @@ class GNOBlockEfficient(MessagePassing):
 
     def forward(self, x, edge_index, edge_attr):
         for idx in range(self.depth):
-            x = self.propagate(edge_index, x=x, edge_attr=edge_attr)
-            if(idx < self.depth - 1):
+            x = x + self.propagate(edge_index, x=x, edge_attr=edge_attr)
+            if(idx < self.depth - 1 or self.apply_to_output):
                 x = self.norm(F.gelu(x))
         return x
     
@@ -231,9 +231,6 @@ class GNOBlockEfficient(MessagePassing):
         x_j = self.src_func(x_j)
         edge_attr = self.edge_func(edge_attr)
         return self.out_func(x_i + x_j + edge_attr)
-    
-    def update(self, aggr_out, x):
-        return self.self_func(x) + aggr_out
 
 class GNOBlockEfficientEdgeUpdates(GNOBlockEfficient):
     def __init__(self, latent_dims:int, edge_dims:int, depth:int, mlp_ratio:int=None, aggr:str='mean', apply_to_output:bool=False):
