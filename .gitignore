@@ -17,6 +17,8 @@ constants.py
 
 **/**.ipynb
 
+data/data_generation/*
+
 
 # C extensions
 *.so
