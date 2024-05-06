@@ -1,4 +1,5 @@
 import os
+os.environ["WANDB__SERVICE_WAIT"] = "300"
 import gc
 from datetime import datetime
 import numpy as np
@@ -34,7 +35,7 @@ PROJECT = "NIPS-24-GFNO"
 # PROJECT = "DEBUG"
 
 from constants import WANDB_KEY
-wandb.login(key=WANDB_KEY, relogin=True)
+wandb.login(key=WANDB_KEY)
 
 def parse_model_outputs(preds:list, idx:int) -> np.array:
     predictions = np.concatenate([
