@@ -1,5 +1,5 @@
 ADD_INIT_TO_EDGE: True
-BATCH_SIZE: 8
+BATCH_SIZE: 16
 DATA_FILE: heat_equation_non_periodic_vary.h5
 DEPTH: 3
 EDGE_DROPOUT: 0.3
