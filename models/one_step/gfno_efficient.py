@@ -43,7 +43,6 @@ class GFNOEfficient(nn.Module):
         self.edge_dims = 5
         self.graph_passes = config['GRAPH_PASSES']
         self.add_init_to_edge = config.get("ADD_INIT_TO_EDGE", False)
-        assert (self.add_nodes_to_edge and self.add_init_to_edge) == False
         if(self.add_init_to_edge):
             self.edge_dims += 2
             self.edge_attr_updater = CombineInitAndEdges()
