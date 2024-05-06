@@ -43,7 +43,7 @@ def parse_model_outputs(preds:list, idx:int) -> np.array:
     return predictions
 
 def evaluate_model(trainer, model, data_module, loader, split, indecies:np.ndarray=None, save_results:bool=False, data_file:str=None):
-    outputs = trainer.predict(model=model, dataloaders=loader)
+    outputs = trainer.predict(model=model, dataloaders=loader, ckpt_path="best")
     predictions, actuals = parse_model_outputs(outputs, 0), parse_model_outputs(outputs, 1)
     del outputs
     gc.collect()
@@ -97,7 +97,7 @@ def run_experiment(config=None):
         # get the trainer that we will use to fit the model
         lightning_logger = WandbLogger(log_model=False)
         lr_monitor = LearningRateMonitor(logging_interval='epoch')
-        early_stopping = EarlyStopping('val/loss', patience=6)
+        early_stopping = EarlyStopping('val/loss', patience=8)
         model_checkpoint_val_loss = ModelCheckpoint(monitor="val/loss", mode="min", filename="Ep{epoch:02d}-val{val/loss:.2f}-best", auto_insert_metric_name=False, verbose=True)
         trainer = pl.Trainer(
             accelerator=ACCELERATOR,
