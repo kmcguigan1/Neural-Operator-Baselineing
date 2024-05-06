@@ -7,10 +7,10 @@ import math
 
 from models.layers.base_layers import MLP
 from models.layers.fourier_blocks_dim_last import TokenFNOBranch
-from models.layers.graph_blocks import GNOBlockEfficient
+from models.layers.graph_blocks import GNOBlockEfficient, CombineInitAndEdges
 
 class GFNOBlock(nn.Module):
-    def __init__(self, latent_dims, modes1, modes2, edge_dims:int, graph_passes:int, mlp_ratio:int=None):
+    def __init__(self, latent_dims, modes1, modes2, edge_dims:int, graph_passes:int, mlp_ratio:int=1):
         super().__init__()
         # vars
         self.latent_dims = latent_dims
@@ -22,12 +22,12 @@ class GFNOBlock(nn.Module):
         # layers
         self.fno_block = TokenFNOBranch(self.latent_dims, self.modes1, self.modes2, mlp_ratio=mlp_ratio)
         self.gno_block = GNOBlockEfficient(self.latent_dims, self.edge_dims, self.graph_passes, mlp_ratio=mlp_ratio)
-        self.norm = nn.LayerNorm(self.latent_dims)
+        # self.norm = nn.LayerNorm(self.latent_dims)
 
     def forward(self, nodes, edge_index, edge_attrs, batch_size, image_size):
         x1 = self.fno_block(nodes, batch_size, image_size)
         x2 = self.gno_block(nodes, edge_index, edge_attrs)
-        return self.norm(F.gelu(x1 + x2))
+        return F.gelu(x1 + x2)
 
 class GFNOEfficient(nn.Module):
     def __init__(self, config:dict):
@@ -42,12 +42,19 @@ class GFNOEfficient(nn.Module):
         # graph based information
         self.edge_dims = 5
         self.graph_passes = config['GRAPH_PASSES']
+        self.add_init_to_edge = config.get("ADD_INIT_TO_EDGE", False)
+        assert (self.add_nodes_to_edge and self.add_init_to_edge) == False
+        if(self.add_init_to_edge):
+            self.edge_dims += 2
+            self.edge_attr_updater = CombineInitAndEdges()
         # setup layers
         self.project = MLP(self.in_dims, self.latent_dims, self.latent_dims//2)
         self.decode = MLP(self.latent_dims, 1, self.latent_dims//2)
         self.blocks = nn.ModuleList([GFNOBlock(self.latent_dims, self.modes[0], self.modes[1], self.edge_dims, self.graph_passes) for _ in range(self.depth)])   
 
     def forward(self, nodes, grid, edge_index, edge_attr, batch_size, image_size):
+        if(self.add_init_to_edge):
+            edge_attr = self.edge_attr_updater(edge_index, edge_attr, nodes[..., -1:])
         # add the grid to the data
         nodes = torch.cat((nodes, grid), dim=-1)
         # project the data
