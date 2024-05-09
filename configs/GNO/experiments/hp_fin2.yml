@@ -1,0 +1,6 @@
+DATA_FILE: heat_equation_periodic_vary.h5
+DATA_MODE: CUST_PDE
+
+FINAL: True
+SEED: 1234
+SAVE_RESULTS: True
