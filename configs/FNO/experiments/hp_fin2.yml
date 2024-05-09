@@ -1,6 +1,11 @@
 DATA_FILE: heat_equation_periodic_vary.h5
 DATA_MODE: CUST_PDE
 
+LATENT_DIMS: 64
+MODES1: 16
+MODES2: 16
+DEPTH: 3
+
 FINAL: True
 SEED: 1234
 SAVE_RESULTS: True
