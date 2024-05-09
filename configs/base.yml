@@ -8,8 +8,8 @@ NORMALIZATION: gaussian
 # model information
 LOSS: MSE
 # train information
-EPOCHS: 200
-LEARNING_RATE: 0.0001
+EPOCHS: 250
+LEARNING_RATE: 0.001
 OPTIMIZER: 
   KIND: adam
 SCHEDULER:
