@@ -1,0 +1,10 @@
+DATA_FILE: heat_equation_non_periodic_vary.h5
+DATA_MODE: CUST_PDE
+
+FINAL: True
+SEED: 1234
+SAVE_RESULTS: True
+
+LATENT_DIMS: 64
+KERNEL_SIZE: 3
+DEPTH: 3
