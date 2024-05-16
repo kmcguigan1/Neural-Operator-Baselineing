@@ -20,6 +20,8 @@ class GNO(torch.nn.Module):
         self.use_single_conv = config.get("USE_SINGLE_CONV", False)
         self.add_nodes_to_edge = config.get("ADD_NODES_TO_EDGE", False)
         self.add_init_to_edge = config.get("ADD_INIT_TO_EDGE", False)
+        self.shorten_kernel = config.get("SHORTEN_KERNEL", False)
+
         self.edge_dims = 5
         self.kernel_dims = config['KERNEL_DIMS']
         # check that we only pick one edge thing
@@ -46,7 +48,8 @@ class GNO(torch.nn.Module):
             out_dims=self.latent_dims, 
             kernel_dims=self.kernel_dims, 
             edge_dims=self.edge_dims, 
-            depth=self.depth
+            depth=self.depth,
+            shorten_kernel=self.shorten_kernel
         )
 
         if(self.add_init_to_edge):
