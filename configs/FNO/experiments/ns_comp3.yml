@@ -1,0 +1,10 @@
+LATENT_DIMS: 32
+DEPTH: 3
+
+# fno stuff
+MODES1: 16
+MODES2: 16
+
+FINAL: True
+SEED: 9101
+SAVE_RESULTS: True
