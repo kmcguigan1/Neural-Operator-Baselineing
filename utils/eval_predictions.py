@@ -162,7 +162,7 @@ def run_all_metrics(forecasts:np.array, actuals:np.array, split_name:str):
     calculate_sample_relative_error(forecasts, actuals, 'relative_error', split_name)
     return mean_abs_error
 
-def save_predictions(predictions:np.ndarray, actuals:np.ndarray, indecies:np.ndarray, split:str, data_file:str):
+def save_predictions(predictions:np.ndarray, actuals:np.ndarray, indecies:np.ndarray, split:str, data_file:str, exp_kind:str):
     os.makedirs(RESULTS_PATH, exist_ok=True)
     run_name = wandb.run.name
     if(len(run_name) < 2):
@@ -170,8 +170,11 @@ def save_predictions(predictions:np.ndarray, actuals:np.ndarray, indecies:np.nda
 
     if(indecies is None):
         indecies = np.array([-1])
+    
+    path = os.path.join(RESULTS_PATH, exp_kind)
+    os.makedirs(path, exist_ok=True)
     np.savez(
-        os.path.join(RESULTS_PATH, f'{run_name}-{split}.npz'),
+        os.path.join(path, f'{run_name}-{split}.npz'),
         predictions=predictions,
         actuals=actuals,
         split=split,

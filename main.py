@@ -43,7 +43,7 @@ def parse_model_outputs(preds:list, idx:int) -> np.array:
     ])
     return predictions
 
-def evaluate_model(trainer, model, data_module, loader, split, indecies:np.ndarray=None, save_results:bool=False, data_file:str=None):
+def evaluate_model(trainer, model, data_module, loader, split, exp_kind, indecies:np.ndarray=None, save_results:bool=False, data_file:str=None):
     outputs = trainer.predict(model=model, dataloaders=loader, ckpt_path="best")
     predictions, actuals = parse_model_outputs(outputs, 0), parse_model_outputs(outputs, 1)
     del outputs
@@ -52,7 +52,7 @@ def evaluate_model(trainer, model, data_module, loader, split, indecies:np.ndarr
     actuals = data_module.inverse_transform(actuals)
     key_metric = run_all_metrics(predictions, actuals, split)
     if(save_results):
-        save_predictions(predictions, actuals, indecies, split, data_file)
+        save_predictions(predictions, actuals, indecies, split, data_file, exp_kind)
     del predictions
     del actuals
     gc.collect()
@@ -122,12 +122,12 @@ def run_experiment(config=None):
         if(config['EXP_KIND'] != 'CONV_LSTM'):
             print("Running Test on 1 downsample ratio")
             test_loader = data_module.get_testing_data(downsample_ratio=1)
-            key_metric = evaluate_model(trainer, model, data_module, test_loader, 'test_upsampled', indecies=data_module.data_reader.test_indecies, data_file=config['DATA_FILE'], save_results=save_results)
+            key_metric = evaluate_model(trainer, model, data_module, test_loader, 'test_upsampled', config['EXP_KIND'], indecies=data_module.data_reader.test_indecies, data_file=config['DATA_FILE'], save_results=save_results)
             del test_loader
             gc.collect()
         print("Running Test on 2 downsample ratio")
         test_loader = data_module.get_testing_data(downsample_ratio=2)
-        key_metric = evaluate_model(trainer, model, data_module, test_loader, 'test', indecies=data_module.data_reader.test_indecies, data_file=config['DATA_FILE'], save_results=save_results)
+        key_metric = evaluate_model(trainer, model, data_module, test_loader, 'test', config['EXP_KIND'], indecies=data_module.data_reader.test_indecies, data_file=config['DATA_FILE'], save_results=save_results)
         del test_loader
         gc.collect()
         # predict the model
