@@ -1,5 +1,9 @@
+
 DATA_FILE: heat_equation_periodic_vary.h5
 DATA_MODE: CUST_PDE
+
+TIME_STEPS_IN: 8
+TIME_STEPS_OUT: 8
 
 LATENT_DIMS: 32
 DEPTH: 3

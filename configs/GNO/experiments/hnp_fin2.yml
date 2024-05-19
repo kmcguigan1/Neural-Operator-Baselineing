@@ -1,3 +1,9 @@
 FINAL: True
 SEED: 5678
 SAVE_RESULTS: True
+
+DATA_FILE: heat_equation_non_periodic_vary.h5
+DATA_MODE: CUST_PDE
+
+TIME_STEPS_IN: 8
+TIME_STEPS_OUT: 8
