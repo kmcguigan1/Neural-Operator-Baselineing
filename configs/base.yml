@@ -9,6 +9,7 @@ NORMALIZATION: gaussian
 LOSS: MSE
 # train information
 EPOCHS: 250
+
 LEARNING_RATE: 0.001
 OPTIMIZER: 
   KIND: adam

@@ -10,13 +10,15 @@ from models.layers.fourier_blocks_dim_last import TokenFNOBranch
 from models.layers.graph_blocks import GNOBlockSingleConv, GNOBlockSingleConvAddNodesToEdge, CombineInitAndEdges, GNOBlock
 
 class GFNOBlock(nn.Module):
-    def __init__(self, latent_dims, modes1, modes2, kernel_dims:int, edge_dims:int, graph_passes:int, add_init_to_edge:bool, add_node_to_edge:bool, shorten_kernel:bool, padding_mode:str=None):
+    def __init__(self, latent_dims, modes1, modes2, kernel_dims:int, edge_dims:int, graph_passes:int, add_init_to_edge:bool, add_node_to_edge:bool, shorten_kernel:bool, padding_mode:str=None, skip_graph:bool=False):
         super().__init__()
         # vars
         self.latent_dims = latent_dims
         self.modes1 = modes1
         self.modes2 = modes2
         self.padding_mode = padding_mode
+
+        self.skip_graph = skip_graph
 
         self.kernel_dims = kernel_dims
         self.edge_dims = edge_dims
@@ -27,14 +29,20 @@ class GFNOBlock(nn.Module):
         self.add_node_to_edge = add_node_to_edge
         # layers
         self.fno_block = TokenFNOBranch(self.latent_dims, self.modes1, self.modes2, mlp_ratio=1, padding_mode=self.padding_mode)
-        if(self.add_node_to_edge):
+        
+        if(self.skip_graph):
+            self.gno_block = MLP(self.latent_dims, self.latent_dims, self.latent_dims)
+        elif(self.add_node_to_edge):
             self.gno_block = GNOBlockSingleConvAddNodesToEdge(self.latent_dims, self.latent_dims, self.kernel_dims, self.edge_dims, self.graph_passes, shorten_kernel=self.shorten_kernel)
         else:
             self.gno_block = GNOBlockSingleConv(self.latent_dims, self.latent_dims, self.kernel_dims, self.edge_dims, self.graph_passes, shorten_kernel=self.shorten_kernel)
 
     def forward(self, nodes, edge_index, edge_attrs, batch_size, image_size):
         x1 = self.fno_block(nodes, batch_size, image_size)
-        x2 = self.gno_block(nodes, edge_index, edge_attrs)
+        if(self.skip_graph):
+            x2 = self.gno_block(nodes)
+        else:
+            x2 = self.gno_block(nodes, edge_index, edge_attrs)
         return F.gelu(x1 + x2)
 
 class GFNO(nn.Module):
@@ -49,6 +57,8 @@ class GFNO(nn.Module):
         self.modes = (config['MODES1'], config['MODES2'])
         self.padding_mode = config.get('PADDING_MODE', None)
         # graph based information
+        self.skip_graph = config.get("SKIP_GNO", False)
+
         self.kernel_dims = config['KERNEL_DIMS']
         self.edge_dims = 5
         self.graph_passes = config['GRAPH_PASSES']
@@ -65,7 +75,7 @@ class GFNO(nn.Module):
         self.decode = MLP(self.latent_dims, 1, self.latent_dims//2)
         self.blocks = nn.ModuleList()
         for idx in range(self.depth):
-            self.blocks.append(GFNOBlock(self.latent_dims, self.modes[0], self.modes[1], self.kernel_dims, self.edge_dims, self.graph_passes, self.add_init_to_edge, self.add_nodes_to_edge, self.shorten_kernel, padding_mode=self.padding_mode))
+            self.blocks.append(GFNOBlock(self.latent_dims, self.modes[0], self.modes[1], self.kernel_dims, self.edge_dims, self.graph_passes, self.add_init_to_edge, self.add_nodes_to_edge, self.shorten_kernel, padding_mode=self.padding_mode, skip_graph=self.skip_graph))
 
     def forward(self, nodes, grid, edge_index, edge_attr, batch_size, image_size):
         if(self.add_init_to_edge):

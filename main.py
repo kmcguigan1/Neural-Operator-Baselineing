@@ -31,8 +31,8 @@ from constants import ACCELERATOR
 
 ## WAND CONSTANTS
 ENTITY = "kmcguigan"
-PROJECT = "NIPS-24-GFNO"
-# PROJECT = "DEBUG"
+# PROJECT = "NIPS-24-GFNO"
+PROJECT = "DEBUG"
 
 from constants import WANDB_KEY
 wandb.login(key=WANDB_KEY)

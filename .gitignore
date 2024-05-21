@@ -20,6 +20,8 @@ constants.py
 
 data/data_generation/*
 
+.DS_Store
+
 
 # C extensions
 *.so
